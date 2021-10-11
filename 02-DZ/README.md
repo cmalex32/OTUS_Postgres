@@ -41,7 +41,7 @@ COMMIT
 
 посмотреть текущий уровень изоляции: show transaction isolation level
 
-show transaction isolation level;
+postgres=# show transaction isolation level;
  transaction_isolation
 -----------------------
  read committed
@@ -49,17 +49,17 @@ show transaction isolation level;
 
 начать новую транзакцию в обоих сессиях с дефолтным (не меняя) уровнем изоляции
 
- begin;
+postgres=# begin;
 BEGIN
 
 в первой сессии добавить новую запись insert into persons(first_name, second_name) values('sergey', 'sergeev');
 
- insert into persons(first_name, second_name) values('sergey', 'sergeev');
+postgres=*# insert into persons(first_name, second_name) values('sergey', 'sergeev');
 INSERT 0 1
 
 сделать select * from persons во второй сессии
 
- select * from persons;
+postgres=*# select * from persons;
  id | first_name | second_name
 ----+------------+-------------
   1 | ivan       | ivanov
@@ -72,12 +72,12 @@ INSERT 0 1
 
 завершить первую транзакцию - commit;
 
- commit;
+postgres=*# commit;
 COMMIT
 
 сделать select * from persons во второй сессии
 
- select * from persons;
+postgres=*# select * from persons;
  id | first_name | second_name
 ----+------------+-------------
   1 | ivan       | ivanov
@@ -91,16 +91,16 @@ COMMIT
 
 завершите транзакцию во второй сессии
 
- commit;
+postgres=*# commit;
 COMMIT
 
 начать новые но уже repeatable read транзации - set transaction isolation level repeatable read;
 
- begin;
+postgres=# begin;
 BEGIN
- set transaction isolation level repeatable read;
+postgres=*# set transaction isolation level repeatable read;
 SET
- show transaction isolation level;
+postgres=*# show transaction isolation level;
  transaction_isolation
 -----------------------
  repeatable read
@@ -108,12 +108,12 @@ SET
 
 в первой сессии добавить новую запись insert into persons(first_name, second_name) values('sveta', 'svetova');
 
- insert into persons(first_name, second_name) values('sveta', 'svetova');
+postgres=*# insert into persons(first_name, second_name) values('sveta', 'svetova');
 INSERT 0 1
 
 сделать select * from persons во второй сессии
 
-select * from persons;
+postgres=*# select * from persons;
  id | first_name | second_name
 ----+------------+-------------
   1 | ivan       | ivanov
@@ -127,12 +127,12 @@ select * from persons;
 
 завершить первую транзакцию - commit;
 
- commit;
+postgres=*# commit;
 COMMIT
 
 сделать select * from persons во второй сессии
 
-select * from persons;
+postgres=*# select * from persons;
  id | first_name | second_name
 ----+------------+-------------
   1 | ivan       | ivanov
@@ -146,12 +146,12 @@ select * from persons;
 
 завершить вторую транзакцию
 
- commit;
+postgres=*# commit;
 COMMIT
 
 сделать select * from persons во второй сессии
 
- select * from persons;
+postgres=# select * from persons;
  id | first_name | second_name
 ----+------------+-------------
   1 | ivan       | ivanov
