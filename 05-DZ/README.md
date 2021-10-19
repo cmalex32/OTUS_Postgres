@@ -51,25 +51,25 @@ INSERT 0 1
 >8 создайте новую роль readonly  
 
 ```console
-testdb=# create role testro with login;
+testdb=# create role readonly;
 ```
 CREATE ROLE
 >9 дайте новой роли право на подключение к базе данных testdb  
 
 ```console
-testdb=# grant connect on database testdb to testro;
+testdb=# grant connect on database testdb to readonly;
 GRANT
 ```
 >10 дайте новой роли право на использование схемы testnm  
 
 ```console
-testdb=# grant usage on schema testnm to testro;
+testdb=# grant usage on schema testnm to readonly;
 GRANT
 ```
 >11 дайте новой роли право на select для всех таблиц схемы testnm  
 
 ```console
-testdb=# grant select on all tables in schema testnm to testro;
+testdb=# grant select on all tables in schema testnm to readonly;
 GRANT
 ```
 >12 создайте пользователя testread с паролем test123  
@@ -80,7 +80,10 @@ CREATE ROLE
 ```
 >13 дайте роль readonly пользователю testread  
 
-Роли readonly не существует, только что созданный пользователь и так не имеет никаких прав ни для чего.
+```console
+testdb=# grant readonly to testread;
+GRANT ROLE
+```
 >14 зайдите под пользователем testread в базу данных testdb  
 
 ```console
@@ -101,10 +104,10 @@ ERROR:  permission denied for table t1
 нет
 >17 напишите что именно произошло в тексте домашнего задания  
 
-Конечно не получилоcь, у этого пользователя пока прав никаких нет для select этой таблицы
+Конечно не получилоcь, у этого пользователя пока прав никаких нет для select таблицы созданной в схеме public
 >18 у вас есть идеи почему? ведь права то дали?  
 
-Права дали только для логина в базу
+Права дали только для схемы testdb
 >19 посмотрите на список таблиц  
 
 ```console
@@ -164,14 +167,17 @@ LINE 1: select * from testnm.t1;
 >28 получилось?  
 >29 есть идеи почему? если нет - смотрите шпаргалку  
 
-Конечно нет, у этой роли по прежнему нет никаких привелегий на select этой таблицы
+Так как таблица была создана позже выданного гранта, на нее не действуют права на select
 >30 как сделать так чтобы такое больше не повторялось? если нет идей - смотрите шпаргалку  
 
-Как и для первого пользователя нужно дать ему привелегии на select таблиц в этой схеме
+можно дать права на select непосредственно пользователю
 ```console
-testdb=# grant usage on schema testnm to testread;
-GRANT
 testdb=# grant select on all tables in schema testnm to testread;
+GRANT
+```
+либо еще раз роли readonly
+```console
+testdb=# grant select on all tables in schema testnm to readonly;
 GRANT
 ```
 >31 сделайте select * from testnm.t1;  
