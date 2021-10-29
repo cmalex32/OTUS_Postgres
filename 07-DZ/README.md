@@ -159,4 +159,139 @@ postgres=# show max_wal_size;
 ```
 Так как max_wal_size не достигался, все контрольные точки выполнялись по времени.
 >Сравните tps в синхронном/асинхронном режиме утилитой pgbench. Объясните полученный результат.  
->Создайте новый кластер с включенной контрольной суммой страниц. Создайте таблицу. Вставьте несколько значений. Выключите кластер. Измените пару байт в таблице. Включите кластер и сделайте выборку из таблицы. Что и почему произошло? как проигнорировать ошибку и продолжить работу?  
+
+Делаем нагрузку в синхронном режиме
+```console
+bash-4.2$ /usr/pgsql-14/bin/pgbench -P 1 -T 10 -U postgres postgres
+pgbench (14.0)
+starting vacuum...end.
+progress: 1.0 s, 528.0 tps, lat 1.883 ms stddev 0.224
+progress: 2.0 s, 529.0 tps, lat 1.891 ms stddev 0.217
+progress: 3.0 s, 505.0 tps, lat 1.977 ms stddev 0.335
+progress: 4.0 s, 530.0 tps, lat 1.885 ms stddev 0.454
+progress: 5.0 s, 547.0 tps, lat 1.829 ms stddev 0.212
+progress: 6.0 s, 515.0 tps, lat 1.939 ms stddev 0.276
+progress: 7.0 s, 538.0 tps, lat 1.860 ms stddev 0.242
+progress: 8.0 s, 519.0 tps, lat 1.925 ms stddev 0.322
+progress: 9.0 s, 541.0 tps, lat 1.848 ms stddev 0.186
+progress: 10.0 s, 546.0 tps, lat 1.830 ms stddev 0.192
+transaction type: <builtin: TPC-B (sort of)>
+scaling factor: 1
+query mode: simple
+number of clients: 1
+number of threads: 1
+duration: 10 s
+number of transactions actually processed: 5299
+latency average = 1.886 ms
+latency stddev = 0.280 ms
+initial connection time = 4.479 ms
+tps = 530.083621 (without initial connection time)
+```
+И в асинхронном
+```console
+postgres=# alter system set  synchronous_commit = off;
+ALTER SYSTEM
+postgres=# select pg_reload_conf();
+ pg_reload_conf
+----------------
+ t
+(1 row)
+-bash-4.2$ /usr/pgsql-14/bin/pgbench -P 1 -T 10 -U postgres postgres
+pgbench (14.0)
+starting vacuum...end.
+progress: 1.0 s, 1097.9 tps, lat 0.906 ms stddev 0.169
+progress: 2.0 s, 1105.1 tps, lat 0.904 ms stddev 0.162
+progress: 3.0 s, 1166.0 tps, lat 0.857 ms stddev 0.191
+progress: 4.0 s, 1116.0 tps, lat 0.895 ms stddev 0.149
+progress: 5.0 s, 1167.0 tps, lat 0.856 ms stddev 0.320
+progress: 6.0 s, 1183.1 tps, lat 0.845 ms stddev 0.123
+progress: 7.0 s, 1172.0 tps, lat 0.852 ms stddev 0.141
+progress: 8.0 s, 1206.0 tps, lat 0.829 ms stddev 0.117
+progress: 9.0 s, 1198.0 tps, lat 0.834 ms stddev 0.117
+progress: 10.0 s, 1181.0 tps, lat 0.846 ms stddev 0.184
+transaction type: <builtin: TPC-B (sort of)>
+scaling factor: 1
+query mode: simple
+number of clients: 1
+number of threads: 1
+duration: 10 s
+number of transactions actually processed: 11593
+latency average = 0.862 ms
+latency stddev = 0.178 ms
+initial connection time = 4.256 ms
+tps = 1159.704273 (without initial connection time)
+```
+Разница в tps почти на попрядок. Объясняется это тем что в синхронном режиме режиме при записи вызывается принудительно fsync, а при асинхронном используется кэш файловой системы.
+>Создайте новый кластер с включенной контрольной суммой страниц. Создайте таблицу.   
+
+```console
+initdb --locale en_US.UTF-8 --data-checksums
+postgres=# create table tst(id int);
+CREATE TABLE
+```
+>Вставьте несколько значений. Выключите кластер. 
+
+```console
+postgres=# INSERT INTO tst SELECT s.id FROM generate_series(1,100) AS s(id);
+INSERT 0 100
+```
+Определяем пусть до файла таблицы
+```console
+postgres=# SELECT pg_relation_filepath('test');
+ pg_relation_filepath
+----------------------
+ base/14486/18371
+(1 row)
+[root@instance-2 ~]# systemctl stop postgresql-14.service
+```
+>Измените пару байт в таблице. Включите кластер и сделайте выборку из таблицы. 
+```console
+vi /var/lib/pgsql/14/data/base/14486/18374
+[root@instance-2 ~]# systemctl start postgresql-14.service
+
+postgres=# select * from tst;
+WARNING:  page verification failed, calculated checksum 15905 but expected 14106
+ERROR:  invalid page in block 0 of relation base/14486/18374
+```
+
+>Что и почему произошло? 
+
+Так как база создана с проверкой checksum, а мы поменяли данные, то проверка не прошла.
+>как проигнорировать ошибку и продолжить работу?  
+
+Выставлием параметр
+```console
+postgres=# alter system set ignore_checksum_failure = on;
+ALTER SYSTEM
+postgres=# select pg_reload_conf();
+ pg_reload_conf
+----------------
+ t
+(1 row)
+
+postgres=# show ignore_checksum_failure ;
+ ignore_checksum_failure
+-------------------------
+ on
+(1 row)
+```
+Смотрим таблицу
+```console
+postgres=# select * from tst;
+WARNING:  page verification failed, calculated checksum 15905 but expected 14106
+ id
+-----
+   1
+   2
+   3
+   4
+   5
+   6
+   7
+   8
+   9
+
+  11
+  12
+```
+Выборка работает, так как игнорируется неправильная checksum, очевидно измененные байты попали на 10 запись.
