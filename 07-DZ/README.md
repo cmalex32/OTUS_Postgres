@@ -259,7 +259,7 @@ ERROR:  invalid page in block 0 of relation base/14486/18374
 Так как база создана с проверкой checksum, а мы поменяли данные, то проверка не прошла.
 >как проигнорировать ошибку и продолжить работу?  
 
-Выставлием параметр
+Выставляем параметр
 ```console
 postgres=# alter system set ignore_checksum_failure = on;
 ALTER SYSTEM
