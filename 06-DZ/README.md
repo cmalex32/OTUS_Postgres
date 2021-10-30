@@ -220,3 +220,5 @@ latency stddev = 21.091 ms
 initial connection time = 27.645 ms
 tps = 611.945127 (without initial connection time)
 ```
+Сильной разницы не наблюдается, io дисков хватает для таких операций и параметры автовакуума не влияют в целом на такую нагрузку.
+![network](https://github.com/cmalex32/OTUS_Postgres/blob/main/06-DZ/autovacuum.png)
