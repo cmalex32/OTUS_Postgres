@@ -9,37 +9,16 @@
 
 Используем уже установленный instance Red Hat Enterprise Linux Server release 7.9 (Maipo) + PostgreSQL 14
 Пересоздадим БД и запустим
+```console
 -bash-4.2$ rm -rf /var/lib/pgsql/14/data
 -bash-4.2$ /usr/pgsql-14/bin/initdb --locale en_US.UTF-8
--bash-4.2$ mv postgresql.conf postgresql.base.conf
--bash-4.2$ vi postgresql.conf
 systemctl start postgresql-14.service
+```
+Создадим тестовую базу
+```console
 postgres=# create database testdb;
 CREATE DATABASE
-[root@instance-2 sysbench-tpcc]# ./tpcc.lua --pgsql-user=postgres --pgsql-db=testdb --time=300 --threads=64 --report-interval=1 --tables=10 --scale=100 --db-driver=pgsql prepare
-
-
-[root@instance-2 sysbench-tpcc]# ./tpcc.lua --pgsql-user=postgres --pgsql-db=testdb --time=300 --threads=64 --report-interval=1 --tables=10 --scale=100 --db-driver=pgsql run
-
-include 'postgresql.base.conf'
-
-max_connections = 1000
-shared_buffers = 1GB
-effective_cache_size = 3GB
-maintenance_work_mem = 512MB
-checkpoint_completion_target = 0.9
-wal_buffers = 16MB
-default_statistics_target = 500
-random_page_cost = 1.1
-effective_io_concurrency = 200
-work_mem = 524kB
-min_wal_size = 4GB
-max_wal_size = 16GB
-max_worker_processes = 2
-max_parallel_workers_per_gather = 1
-max_parallel_workers = 2
-max_parallel_maintenance_workers = 1
-
+```
 >настроить кластер PostgreSQL 13 на максимальную производительность не  
 >обращая внимание на возможные проблемы с надежностью в случае  
 >аварийной перезагрузки виртуальной машины  
@@ -125,3 +104,81 @@ Threads fairness:
     execution time (avg/stddev):   600.3024/0.21
  ```
 >написать какого значения tps удалось достичь, показать какие параметры в какие значения устанавливали и почему  
+
+Меняем параметры сервиса БД, для максимальной производительности
+```console
+# Делаем минимальное количество возможных подключений, запуск будет в 64 соннекта плюс системные
+max_connections = '80'
+# Выставляем 50 процентов от всего объема памяти для использования сервисом БД
+shared_buffers = '2GB'
+# Устанавливаем параметры для записи в файловую систему максимально небезопасными, но быстрыми
+synchronous_commit = 'off'
+full_page_writes = 'off'
+fsync = 'off'
+# Устанавливаем максимально возможный параметр использования памяти для подключений к базе исходя из количества сессий для теста (64)
+work_mem = '30MB'
+# Устанавливаем минимально возможный параметр использования памяти для служебных процессов
+maintenance_work_mem = '1MB'
+# Автовакуум полностью выключаем
+autovacuum = 'off'
+# Максимально уменьшаем количество записываемой информации в WAL файлы
+wal_level = 'minimal'требуе
+# Если этот параметр больше 0 не будет работать предыдущий, так как при передачи WAL файлов требуется минимум replica
+max_wal_senders = '0'
+# Так как у нас база горазда больше размеров оперативной памяти и диски при этом SSD, то можно этот параметр произвольного доступа к диску уменьшить, по умолчанию от # 4.0
+random_page_cost = '1.1'
+```
+Запукаем тест
+```console
+[root@instance-2 ~]# sysbench --pgsql-db=testdb --db-driver=pgsql --pgsql-user=postgres --table_size=2000000 --tables=25 --report-interval=10 --threads=64 --time=600 --verbosity=4 /usr/share/sysbench/oltp_read_write.lua run
+sysbench 1.0.20 (using bundled LuaJIT 2.1.0-beta2)
+
+Running the test with following options:
+Number of threads: 64
+Report intermediate results every 10 second(s)
+Initializing random number generator from current time
+
+
+Initializing worker threads...
+
+Threads started!
+
+[ 10s ] thds: 64 tps: 272.73 qps: 5525.37 (r/w/o: 3879.54/1094.21/551.63) lat (ms,95%): 356.70 err/s: 0.00 reconn/s: 0.00
+[ 20s ] thds: 64 tps: 239.72 qps: 4782.01 (r/w/o: 3346.21/956.16/479.63) lat (ms,95%): 707.07 err/s: 0.00 reconn/s: 0.00
+...
+[ 590s ] thds: 64 tps: 152.00 qps: 3036.72 (r/w/o: 2126.12/606.60/304.00) lat (ms,95%): 909.80 err/s: 0.00 reconn/s: 0.00
+[ 600s ] thds: 64 tps: 127.80 qps: 2551.55 (r/w/o: 1785.27/510.69/255.60) lat (ms,95%): 1069.86 err/s: 0.00 reconn/s: 0.00
+Time limit exceeded, exiting...
+(last message repeated 63 times)
+Done.
+
+SQL statistics:
+    queries performed:
+        read:                            1141154
+        write:                           326043
+        other:                           163023
+        total:                           1630220
+    transactions:                        81511  (135.61 per sec.)
+    queries:                             1630220 (2712.22 per sec.)
+    ignored errors:                      0      (0.00 per sec.)
+    reconnects:                          0      (0.00 per sec.)
+
+General statistics:
+    total time:                          601.0641s
+    total number of events:              81511
+
+Latency (ms):
+         min:                                    2.98
+         avg:                                  471.35
+         max:                                 5975.90
+         95th percentile:                     1069.86
+         sum:                             38419994.61
+
+Threads fairness:
+    events (avg/stddev):           1273.6094/20.42
+    execution time (avg/stddev):   600.3124/0.18
+```
+В результате средний tps увеличился от 78.01 до 135.61. Тест был проделан для максимальной производительности, на продуктивных средах такие параметры неприемлимы.
+Создается много рисков потерять данные, также на продуктиве обязательно еще включить data_checksums, что тоже не придаст скорости.
+
+
