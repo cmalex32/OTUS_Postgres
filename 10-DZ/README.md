@@ -268,5 +268,70 @@ systemctl start postgresql-14
  1562 ?        Ss     0:00 postgres: walreceiver streaming 0/3000060
  1564 pts/0    S+     0:00 grep --color=auto post
 ```
+Убедимся что БД действительно в состоянии восстановления.
+```console
+postgres=# select pg_is_in_recovery();
+ pg_is_in_recovery
+-------------------
+ t
+(1 row)
+```
+А на мастере мы также видим что идет асинхронная репликация и запущен процесс walsender.
+```console
+postgres=# select * from pg_stat_replication \gx
+-[ RECORD 1 ]----+------------------------------
+pid              | 1931
+usesysid         | 10
+usename          | postgres
+application_name | walreceiver
+client_addr      | 10.128.0.9
+client_hostname  |
+client_port      | 49074
+backend_start    | 2021-11-15 08:16:37.198527+00
+backend_xmin     |
+state            | streaming
+sent_lsn         | 0/3000148
+write_lsn        | 0/3000148
+flush_lsn        | 0/3000148
+replay_lsn       | 0/3000148
+write_lag        |
+flush_lag        |
+replay_lag       |
+sync_priority    | 0
+sync_state       | async
+reply_time       | 2021-11-15 08:24:34.673328+00
 
+bash-4.2$ ps ax | grep send
+ 1931 ?        Ss     0:00 postgres: walsender postgres 10.128.0.9(49074) streaming 0/3000148
+```
+Проверим работоспособность физической репликации. Добавим по записи на первой ВМ в таблицу test, на второй в test2.
+```console
+postgres=# insert into  test values (5,'test5');
+INSERT 0 1
+postgres=# insert into  test2 values (6,'test6');
+INSERT 0 1
+```
+Проверяем на четверной машине и видим что репликация успешно работает
+```console
+postgres=# select * from test;
+ id | name
+----+-------
+  1 | test1
+  2 | test2
+  5 | test5
+(3 rows)
+
+postgres=# select * from test2;
+ id | name
+----+-------
+  3 | test3
+  4 | test4
+  6 | test6
+(3 rows)
+```
+Проверим что в в БД на четвертой машине нельзя изменять данные она запущена в режиме Read Only
+```console
+postgres=# create table test4(id int, name text);
+ERROR:  cannot execute CREATE TABLE in a read-only transaction
+```
 
