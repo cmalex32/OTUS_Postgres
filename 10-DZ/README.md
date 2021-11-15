@@ -53,7 +53,7 @@ CREATE TABLE
 postgres=# create publication test_pub for table test;
 CREATE PUBLICATION
 ```
-Создаем публикацию таблицы test2 на первой машине.
+Создаем публикацию таблицы test2 на второй машине.
 ```console
 postgres=# create publication test2_pub for table test2;
 CREATE PUBLICATION
