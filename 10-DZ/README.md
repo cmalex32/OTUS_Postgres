@@ -14,8 +14,8 @@
 ```
 Обновляем ОС и перегружаем, на трех машинах
 ```console
-[root@instance-2 ~]# yum update -y
-[root@instance-2 ~]# reboot
+yum update -y
+reboot
 ```
 Добавляем репозиторий, на трех машинах
 ```console
@@ -205,5 +205,68 @@ postgres=# select * from test2;
 Логическая репликация работает. Таким образом на первой машине изменения вносятся в таблицу test, на второй в таблицу test2.
 Все таблицы на всех трех машинах доступны для чтения и данные задублированы 3 раза.
 >реализовать горячее реплицирование для высокой доступности на 4ВМ. Источником должна выступать ВМ №3. Написать с какими проблемами столкнулись.  
+
+Создаем 4 ВМ RHEL4, запускаем, подключаемся
+```console
+gcloud beta compute ssh --zone "us-central1-a" "rhel4"  --project "clever-muse-328410"
+```
+Обновляем ОС и перегружаем
+```console
+yum update -y
+reboot
+```
+Добавляем репозиторий
+```console
+yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+```
+Устанавилваем PostgreSQL 14
+```console
+yum install -y postgresql14-server
+```
+Для того чтобы с третьей ВМ можно было реплицировать данные, надо добавить плавило в pg_hba.conf
+```console
+echo "host    replication             all             0.0.0.0/0               md5" >> /var/lib/pgsql/14/data/pg_hba.conf
+```
+И перечитать конфигурацию.
+```console
+postgres=# select pg_reload_conf();
+ pg_reload_conf
+----------------
+ t
+(1 row)
+```
+Делаем копию базы данных, используя pg_basebackup
+```console
+-bash-4.2$ pg_basebackup -p 5432 -h 10.128.0.8 -U postgres -W -v -P -R -D /var/lib/pgsql/14/data/
+Password:
+pg_basebackup: initiating base backup, waiting for checkpoint to complete
+pg_basebackup: checkpoint completed
+pg_basebackup: write-ahead log start point: 0/2000028 on timeline 1
+pg_basebackup: starting background WAL receiver
+pg_basebackup: created temporary replication slot "pg_basebackup_1879"
+27059/27059 kB (100%), 1/1 tablespace
+pg_basebackup: write-ahead log end point: 0/2000138
+pg_basebackup: waiting for background process to finish streaming ...
+pg_basebackup: syncing data to disk ...
+pg_basebackup: renaming backup_manifest.tmp to backup_manifest
+pg_basebackup: base backup completed
+```
+Запускаем сервис БД на четвертой машине
+```console
+systemctl start postgresql-14
+```
+Посмотрим процессы, видно что есть recovering и прием от мастера walreceiver streaming
+```console
+[root@rhel4 ~]# ps ax | grep post
+ 1202 ?        Ss     0:00 /usr/libexec/postfix/master -w
+ 1555 ?        Ss     0:00 /usr/pgsql-14/bin/postmaster -D /var/lib/pgsql/14/data/
+ 1557 ?        Ss     0:00 postgres: logger
+ 1558 ?        Ss     0:00 postgres: startup recovering 000000010000000000000003
+ 1559 ?        Ss     0:00 postgres: checkpointer
+ 1560 ?        Ss     0:00 postgres: background writer
+ 1561 ?        Ss     0:00 postgres: stats collector
+ 1562 ?        Ss     0:00 postgres: walreceiver streaming 0/3000060
+ 1564 pts/0    S+     0:00 grep --color=auto post
+```
 
 
