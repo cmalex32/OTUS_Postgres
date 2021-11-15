@@ -59,7 +59,7 @@ postgres=# create publication test2_pub for table test2;
 CREATE PUBLICATION
 ```
 Необходимо разрешить сетевое подключение к БД между всеми машинами, добавляем строку в pg_hba.conf на всех ВМ
-и добавляем строку с postgresql.conf, чтобы сервис слушал все интерфейсы
+и добавляем строку в postgresql.conf, чтобы сервис слушал все интерфейсы
 ```console
 echo "host    all             all             0.0.0.0/0               md5" >> /var/lib/pgsql/14/data/pg_hba.conf
 echo listen_addresses = \'*\' >> /var/lib/pgsql/14/data/postgresql.conf
