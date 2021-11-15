@@ -223,7 +223,7 @@ yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_6
 ```console
 yum install -y postgresql14-server
 ```
-Для того чтобы с третьей ВМ можно было реплицировать данные, надо добавить плавило в pg_hba.conf
+Для того чтобы с третьей ВМ можно было реплицировать данные, надо добавить правило в pg_hba.conf
 ```console
 echo "host    replication             all             0.0.0.0/0               md5" >> /var/lib/pgsql/14/data/pg_hba.conf
 ```
