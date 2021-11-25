@@ -138,7 +138,7 @@ Copying gs://my_alex_bucket/hacker_news.full/full_000000000046.csv...06
 postgres=# create database hacker_news
        
 psql "dbname=hacker_news user=postgres" -c "\\COPY full FROM PROGRAM 'cat full_000000000000.csv' CSV HEADER"   
-
+```console
 create table full (       
 title	TEXT,
 url	TEXT,
@@ -154,5 +154,5 @@ parent	BIGINT,
 descendants	BIGINT,
 ranking	BIGINT,
 deleted	BOOLEAN
-)       
-       
+);      
+```       
