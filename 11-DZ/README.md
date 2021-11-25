@@ -139,20 +139,25 @@ postgres=# create database hacker_news
        
 psql "dbname=hacker_news user=postgres" -c "\\COPY full FROM PROGRAM 'cat full_000000000000.csv' CSV HEADER"   
 ```console
-create table full (       
-title	TEXT,
-url	TEXT,
-text	TEXT,
-dead	BOOLEAN,
-by	TEXT,
-score	BIGINT,
-time	BIGINT,
-timestamp	TIMESTAMP,
-type	TEXT,
-id	BIGINT,
-parent	BIGINT,
-descendants	BIGINT,
-ranking	BIGINT,
-deleted	BOOLEAN
-);      
+create table cfull (       
+title TEXT,
+url TEXT,
+text TEXT,
+dead BOOLEAN,
+by TEXT,
+score BIGINT,
+time BIGINT,
+timestamp TIMESTAMP,
+type TEXT,
+id BIGINT,
+parent BIGINT,
+descendants BIGINT,
+ranking BIGINT,
+deleted BOOLEAN
+);     
 ```       
+time for f in full*
+do
+  echo -e "Processing $f file..."
+  psql "dbname=hacker_news user=postgres" -c "\\COPY cfull FROM PROGRAM 'cat $f' CSV HEADER"
+done
