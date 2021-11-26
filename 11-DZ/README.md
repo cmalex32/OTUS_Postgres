@@ -148,8 +148,8 @@ hacker_news=# \d+
  public | cfull | table | postgres | permanent   | heap          | 12 GB |
 (1 row)
 ```  
-Сравнивать будем с очень популярной СУБД MariaDB
-Устанавливаем
+Сравнивать будем с очень популярной СУБД MariaDB.  
+Устанавливаем.
 ```console
 yum install mariadb-server mariadb
 ```
