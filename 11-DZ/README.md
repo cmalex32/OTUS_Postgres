@@ -148,17 +148,33 @@ hacker_news=# \d+
  public | cfull | table | postgres | permanent   | heap          | 12 GB |
 (1 row)
 ```  
+Сравнивать будем с очень популярной СУБД MariaDB
+Устанавливаем
+```console
 yum install mariadb-server mariadb
+```
+Меняем расположение базы данных
+```console
 vi /etc/my.cnf.d/server.cnf
 [mysqld]
 datadir = /mnt/mysqldata
-                                                    
+```
+Создаем каталог и меняем владельца
+```console
+mkdir /mnt/mysqldata
 chown mysql:mysql /mnt/mysqldata/                                                    
+```
+Запускаем сервис БД
+```console
 systemctl start mariadb
-
+```
+Создаем базу
+```console
 MariaDB [(none)]> create database hacker_news;
 Query OK, 1 row affected (0.00 sec)
-
+```
+И таблицу
+```console
 MariaDB [(none)]> use hacker_news;
 Database changed
 MariaDB [hacker_news]>
@@ -179,7 +195,9 @@ descendants BIGINT,
 ranking BIGINT,
 deleted BOOLEAN
 );      
-
+```
+Заливаем в цикле данные в таблицу. Заливка в MariaDB была медленней на целых 6 минут.
+```console
 time for f in full*
 do
   echo -e "Processing $f file..."
@@ -195,7 +213,9 @@ LOAD DATA LOCAL INFILE "/root/hacker_news.full/full_000000000046.csv" INTO TABLE
 real    30m31.013s
 user    0m2.646s
 sys     0m13.220s
-  
+```
+Смотрим размеры БД и таблицы. Размер также оказался на 2 Гб больше.
+```console
 MariaDB [hacker_news]> SELECT table_schema AS "Имя базы данных", ROUND(SUM(data_length + index_length) / 1024 / 1024 / 1024, 2) AS "Размер в Гб" FROM information_schema.TABLES GROUP BY table_schema;
 +------------------------------+----------------------+
 | Имя базы данных              | Размер в Гб          |
@@ -214,8 +234,13 @@ MariaDB [hacker_news]> SELECT table_name AS `Table`, round(((data_length + index
 | cfull |   15095.00 |
 +-------+------------+
 1 row in set (0.02 sec)
-
-  systemctl stop mariadb
+```
+Останавливаем MariaDB.
+```console
+systemctl stop mariadb
+```
+Смотрим количество строк и время выполнения запроса в PostgreSQL
+```console
  time psql "dbname=hacker_news user=postgres" -c "select count(*) from cfull;"
   count
 ----------
@@ -225,13 +250,19 @@ MariaDB [hacker_news]> SELECT table_name AS `Table`, round(((data_length + index
 real    7m35.223s
 user    0m0.003s
 sys     0m0.010s
+```
+Останавливаем сервис БД PostgreSQL запускаем MariaDB.
 
 /usr/pgsql-14/bin/pg_ctl -D /mnt/pgdata stop
 waiting for server to shut down.... done
+```console
 server stopped
-
-  systemctl start mariadb                                                  
-  time mysql -D hacker_news  -e "select count(*) from cfull;"
+systemctl start mariadb                                                  
+```
+Выполняем такой же запрос. Количество записей получилось чуть больше в PostgreSQL.
+Время выполнения запроса в PostgreSQL меньше более чем на 2 минуты.
+```console
+time mysql -D hacker_news  -e "select count(*) from cfull;"
 +----------+
 | count(*) |
 +----------+
@@ -241,4 +272,5 @@ server stopped
 real    9m51.630s
 user    0m0.004s
 sys     0m0.007s
+```
 
