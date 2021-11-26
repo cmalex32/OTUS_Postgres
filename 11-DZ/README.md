@@ -273,4 +273,65 @@ real    9m51.630s
 user    0m0.004s
 sys     0m0.007s
 ```
+Выполняем запрос с сортировкой и группировкой, так как нет никаких индексов и происходит full scan, время примерно одинаковое.
+```console
+time mysql -D hacker_news  -e "SELECT byt, count(*) cnt  FROM cfull group by byt order by cnt;" > mariadb.out
 
+real    9m51.558s
+user    0m0.398s
+sys     0m0.066s
+
+cat mariadb.out
+byt     cnt
+blableblable    1
+liberaliter     1
+...
+rbanffy 41466
+dragonwriter    42107
+pjmlp   42803
+jacquesm        45728
+dang    52109
+tptacek 55114
+        877032
+```
+Останавливаем сервис MariaDB и запускаем PostgreSQL.
+```console
+systemctl stop mariadb
+/usr/pgsql-14/bin/pg_ctl -D /mnt/pgdata start
+```
+Выпоняем такой же запрос к БД PostgreSQL.
+Результат ожидаем, примерно такое же время как и предыдущий, время быстрее запроса к MariaDB также примерно на 2 минуты
+```console
+time psql "dbname=hacker_news user=postgres" -c "SELECT by, count(*) cnt  FROM cfull group by by order by cnt;" > pgsql.out
+
+real    7m38.440s
+user    0m0.852s
+sys     0m0.079s
+
+cat pgsql.out
+       by        |  cnt
+-----------------+--------
+ tauk            |      1
+ Throwaway27b    |      1
+ The-Amagi       |      1
+...
+dragonwriter    |  42107
+ pjmlp           |  42816
+ jacquesm        |  45729
+ dang            |  52110
+ tptacek         |  55114
+                 | 876494
+(764337 rows)
+
+```
+
+Обе СУБД при настройках по умолчанию показывают один и тот же порядок временных затрат на заливку и исполнению запросов.
+Однако БД PostgreSQL показывает более лучшие показатели времени и более компактное хранение данных без индексов.
+
+Проблемы возникшие при выполнении ДЗ.
+При создании таблиц оказалось что для PostgreSQL зарезервированное слово full, а для MariaDB зарезервировано by, пришлось использовать другие.
+При заливке данных закончилось место на диске, так как в БД MariaDB данные заняли больше места чем расчетное.
+Чтобы не переделывать диск проще пододвинуть зарезервированное пространство на файловой системе и перезалить данные в БД MariaDB.
+```console
+tune2fs -m 1 /dev/mapper/datavg-lv_data
+```
