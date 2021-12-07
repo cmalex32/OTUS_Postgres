@@ -182,7 +182,7 @@ taxi-# select company, to_tsvector(company) @@ to_tsquery('Chicago') from taxi_t
    ->  Parallel Seq Scan on taxi_trips  (cost=0.00..1714162.17 rows=2666533 width=25)
 (3 rows)
 ```
-Добавим в таблицу поле search_company типа tsvector и наполним его данными из поля company это поле необходимо для создания индекса типа gin
+Добавим в таблицу поле search_company типа tsvector и наполним его данными из поля company это поле необходимо для создания индекса типа gin  
 ```console
 taxi=# alter table taxi_trips add column search_company tsvector;
 ALTER TABLE
@@ -191,7 +191,7 @@ taxi=# update taxi_trips set search_company = to_tsvector(company);
 UPDATE 6399680
 Time: 561282.034 ms (09:21.282)
 ```
-Посмотрим насколько изменился размер таблицы было 2716 MB, размер увеличился более чем в два раза
+Посмотрим насколько изменился размер таблицы было 2716 MB, размер увеличился более чем в два раза  
 Достаточто ресурсоемкое использование данного функционала
 ```console
 taxi=# select pg_size_pretty(pg_table_size('taxi_trips'));
@@ -200,8 +200,9 @@ taxi=# select pg_size_pretty(pg_table_size('taxi_trips'));
  5753 MB
 (1 row)
 ```
-Для использования полнотекстового поиска создают индексы типа gin или gist, предпочтительным для такого рода поиска является тип gin
-Но для использования такого типа индекса надо создать поле типа tsvector, поэтому его и пришлось создать на предыдущем шаге
+Для использования полнотекстового поиска создают индексы типа gin или gist, предпочтительным для такого рода поиска является тип gin  
+Но для использования такого типа индекса надо создать поле типа tsvector, поэтому его и пришлось создать на предыдущем шаге  
+Создаем индекс
 ```console
 taxi=# create index search_index_company on taxi_trips using gin (search_company);
 CREATE INDEX
@@ -215,7 +216,7 @@ taxi=# select pg_size_pretty(pg_table_size('search_index_company'));
  27 MB
 (1 row)
 ```
-Рассмотрим план запроса, выберем все компании имеющие в названии Chicago, только, конечно поле с индексом должно фигурировать в предикате
+Рассмотрим план запроса, выберем все компании имеющие в названии Chicago, только, конечно поле с индексом должно фигурировать в предикате  
 Видно что сканирование идет по индексу
 ```console
 taxi=# explain
@@ -230,8 +231,8 @@ select company from taxi_trips where search_company @@ to_tsquery('Chicago');
                Index Cond: (search_company @@ to_tsquery('Chicago'::text))
 (6 rows)
 ```
-Посмотрим еще один план запроса, применим группировку по названию компании и выведем количество таски используемых в них 
-Видно что также используется скнирование индекса, а значит запрос будет гораздо быстрее
+Посмотрим еще один план запроса, применим группировку по названию компании и выведем количество такси используемых в них  
+Видно что также используется сканирование индекса, а значит запрос будет гораздо быстрее
 ```console
 taxi=# explain
 taxi-# select company, count(*) from taxi_trips where search_company @@ to_tsquery('Chicago') group by company;
