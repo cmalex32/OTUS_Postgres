@@ -337,7 +337,7 @@ taxi-# where trip_start_timestamp::date between date '2016-11-01' and date'2017-
 >Создать индекс на несколько полей
 
 Посмотрим план запроса сгруппированный по идентификатору такси и времени приезда  
-Конечно идет полное сканирование таблицы, несмотри на то что по полю taxi_id создан индекс
+Конечно идет полное сканирование таблицы, несмотря на то что по полю taxi_id создан индекс
 ```console
 taxi=# explain
 taxi-# select taxi_id, trip_end_timestamp::date as trip_end_date, count(*) from taxi_trips
@@ -369,7 +369,7 @@ taxi=# select pg_size_pretty(pg_table_size('idx_taxi_id_end_date'));
  1054 MB
 (1 row)
 ```
-Проверяем план запроса и убеждаемся что теперь искользуется сканирование созданного составного индекса
+Проверяем план запроса и убеждаемся что теперь используется сканирование созданного составного индекса
 ```console
 taxi=# explain
 taxi-# select taxi_id, trip_end_timestamp::date as trip_end_date, count(*) from taxi_trips
