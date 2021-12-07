@@ -182,7 +182,7 @@ taxi-# select company, to_tsvector(company) @@ to_tsquery('Chicago') from taxi_t
    ->  Parallel Seq Scan on taxi_trips  (cost=0.00..1714162.17 rows=2666533 width=25)
 (3 rows)
 ```
-Добавим в таблицу поле earch_company типа tsvector и наполним его данными из поля company это поле необходимо для создания индекса типа gin
+Добавим в таблицу поле search_company типа tsvector и наполним его данными из поля company это поле необходимо для создания индекса типа gin
 ```console
 taxi=# alter table taxi_trips add column search_company tsvector;
 ALTER TABLE
