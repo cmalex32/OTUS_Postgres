@@ -257,6 +257,12 @@ taxi-# where trip_start_timestamp::date between date '2016-01-01' and date'2016-
 CREATE INDEX
 Time: 180377.302 ms (03:00.377)
 
+taxi=# select pg_size_pretty(pg_table_size('idx_taxi_start_date_part'));
+ pg_size_pretty
+----------------
+ 19 MB
+(1 row)
+
 taxi=# explain
 taxi-# select count(*) from taxi_trips
 taxi-# where trip_start_timestamp::date between date '2016-01-01' and date'2016-02-01';
@@ -288,6 +294,51 @@ taxi-# where trip_start_timestamp::date between date '2016-11-01' and date'2017-
 
 >Создать индекс на несколько полей
 
+taxi=# explain
+taxi-# select taxi_id, trip_end_timestamp::date as trip_end_date, count(*) from taxi_trips
+taxi-# group by taxi_id, trip_end_timestamp::date;
+                                               QUERY PLAN
+--------------------------------------------------------------------------------------------------------
+ Finalize GroupAggregate  (cost=1419664.87..1619665.30 rows=639968 width=143)
+   Group Key: taxi_id, ((trip_end_timestamp)::date)
+   ->  Gather Merge  (cost=1419664.87..1602066.18 rows=1279936 width=143)
+         Workers Planned: 2
+         ->  Partial GroupAggregate  (cost=1418664.85..1453329.78 rows=639968 width=143)
+               Group Key: taxi_id, ((trip_end_timestamp)::date)
+               ->  Sort  (cost=1418664.85..1425331.18 rows=2666533 width=135)
+                     Sort Key: taxi_id, ((trip_end_timestamp)::date)
+                     ->  Parallel Seq Scan on taxi_trips  (cost=0.00..769491.67 rows=2666533 width=135)
+(9 rows)
+
+taxi=# create index idx_taxi_id_end_date on taxi_trips(taxi_id, trip_end_timestamp);
+CREATE INDEX
+Time: 295943.727 ms (04:55.944)
+
+taxi=# select pg_size_pretty(pg_table_size('idx_taxi_id_end_date'));
+ pg_size_pretty
+----------------
+ 1054 MB
+(1 row)
+
+taxi=# explain
+taxi-# select taxi_id, trip_end_timestamp::date as trip_end_date, count(*) from taxi_trips
+taxi-# group by taxi_id, trip_end_timestamp::date;
+                                                                QUERY PLAN
+
+-------------------------------------------------------------------------------------------------------------------------
+-----------------
+ Finalize GroupAggregate  (cost=1145.48..1026233.61 rows=639968 width=143)
+   Group Key: taxi_id, ((trip_end_timestamp)::date)
+   ->  Gather Merge  (cost=1145.48..1008634.49 rows=1279936 width=143)
+         Workers Planned: 2
+         ->  Partial GroupAggregate  (cost=145.46..859898.09 rows=639968 width=143)
+               Group Key: taxi_id, ((trip_end_timestamp)::date)
+               ->  Incremental Sort  (cost=145.46..831899.49 rows=2666533 width=135)
+                     Sort Key: taxi_id, ((trip_end_timestamp)::date)
+                     Presorted Key: taxi_id
+                     ->  Parallel Index Only Scan using idx_taxi_id_end_date on taxi_trips  (cost=0.68..604966.75 rows=26
+66533 width=135)
+(10 rows)
 
 >Написать комментарии к каждому из индексов
 >Описать что и как делали и с какими проблемами столкнулись 
