@@ -11,9 +11,35 @@
 # 1 вариант:
 >Создать индексы на БД, которые ускорят доступ к данным.
 >В данном задании тренируются навыки:
-
 >определения узких мест
->написания запросов для создания индекса
+>написания запросов 
+
+Подключаемся к ВМ  
+```console
+gcloud beta compute ssh --zone "us-central1-a" "instance-2"  --project "clever-muse-328410"
+```
+Добавляем репозиторий  
+```console
+yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+```
+Устанавливаем PostgreSQL 14 
+```console
+yum install -y postgresql14-server
+```
+Создаем каталог для данных, и меняем права на него
+```console
+mkdir /mnt/pgdata
+chown postgres:postgres /mnt/pgdata
+```
+Инициализируем и запускаем сервер БД  
+```console
+/usr/pgsql-14/bin/initdb --locale en_US.UTF-8 -D /mnt/pgdata/14
+/usr/pgsql-14/bin/pg_ctl -D /mnt/pgdata/14 start
+```
+gsutil -m cp gs://my_alex_bucket/taxi/taxi_00000000000*.csv  chicago_taxi_trips
+
+
+>для создания индекса
 >оптимизации Необходимо:
 >Создать индекс к какой-либо из таблиц вашей БД
 >Прислать текстом результат команды explain, в которой используется данный индекс
