@@ -400,18 +400,34 @@ taxi-# group by taxi_id, trip_end_timestamp::date;
 # 2 вариант: 
 >В результате выполнения ДЗ вы научитесь пользоваться различными вариантами соединения таблиц. В данном задании тренируются навыки:
 >написания запросов с различными типами соединений Необходимо:
+
+Будем использовать для создания тестовых таблиц созданную в первом варианте таблицу taxi_trips
+Для увеличения скорости выборки создадим индекс
+```console
 create index idx_company on taxi_trips(company);
+```
+Создадим таблицу company1 с нумерацией по строкам от 1 до 10
+```console
 taxi=# create table company1 as select row_number () over () num, t.company from (select distinct company from taxi_trips where company is not null limit 10) t;
 SELECT 10
 Time: 6.785 ms
+```
+Создадим таблицу company2 с нумерацией по строкам от 6 до 15, она пересекается данными с первой таблицей
+```console
 taxi=# create table company2 as select (row_number () over ())::int+5 num, t.company from (select distinct company from taxi_trips where company is not null offset 
 5 limit 10) t;
 SELECT 10
 Time: 5.492 ms
+```
+Создадим таблицу, непересекающуюся данными ни с какой из таблиц, company3 с нумерацией по строкам от 16 до 25
+```console
 taxi=# create table company3 as select (row_number () over ())::int+15 num, t.company from (select distinct company from taxi_trips where company is not null offset
  15 limit 10) t;
 SELECT 10
 Time: 10.556 ms
+```console
+Посмотрим содержимое созданных таблиц. Все должно быть как задумано.
+```console
 taxi=# select * from company1;
  num        |             company             
 ------------+---------------------------------
@@ -426,7 +442,6 @@ taxi=# select * from company1;
           9 | 1408 - 89599 Donald Barnes
          10 | 1408 - Donald Barnes
 (10 rows)
-
 taxi=# select * from company2;
  num      |                  company                  
 ----------+-------------------------------------------
@@ -441,7 +456,6 @@ taxi=# select * from company2;
        14 | 2192 - Zeymane Corp
        15 | 2241 - 44667 - Felman Corp, Manuel Alonso
 (10 rows)
-
 taxi=# select * from company3;
  num      |            company             
 ----------+--------------------------------
@@ -456,12 +470,11 @@ taxi=# select * from company3;
        24 | 2823 - 73307 Lee Express Inc
        25 | 2823 - 73307 Seung Lee
 (10 rows)
-
-
-
-
+```console
 >Реализовать прямое соединение двух или более таблиц
 
+Выполним селект прямого соединения двух таблиц (join при этом можно не указывать). В обеих таблицах есть одинаковые данные по полю num с 6 до 10.
+```console
 taxi=# select * from company1 a, company2 b  where a.num=b.num;
  num |           company           | num |           company           
 -----+-----------------------------+-----+-----------------------------
@@ -471,13 +484,18 @@ taxi=# select * from company1 a, company2 b  where a.num=b.num;
    9 | 1408 - 89599 Donald Barnes  |   9 | 1408 - 89599 Donald Barnes
   10 | 1408 - Donald Barnes        |  10 | 1408 - Donald Barnes
 (5 rows)
-
+```console
+Проделаем туже операцию с тремя таблицами, так как в третьей таблице нет пересечения по полю num ни с одной таблицей, получаем нулевой редзультат.
+```console
 taxi=# select * from company1 a, company2 b, company3 c where a.num=b.num and a.num=c.num;
  num | company | num | company | num | company 
 -----+---------+-----+---------+-----+---------
 (0 rows)
-
+```
 >Реализовать левостороннее (или правостороннее) соединение двух или более таблиц
+
+Выполняем запрос левостороннего соединения двух первых таблиц, так как соединение "левое" выводятся все строки первой таблицы и данные со второй у которых есть совпадения по полю num
+```console
 taxi=# select * from company1 a left join company2 b on a.num=b.num;
  num |             company             | num |           company           
 -----+---------------------------------+-----+-----------------------------
@@ -492,6 +510,9 @@ taxi=# select * from company1 a left join company2 b on a.num=b.num;
    9 | 1408 - 89599 Donald Barnes      |   9 | 1408 - 89599 Donald Barnes
   10 | 1408 - Donald Barnes            |  10 | 1408 - Donald Barnes
 (10 rows)
+```
+Сделаем аналогичный запрос по трем таблицам. Та как в третьей нет пересекающихся данных по полю num, выведуться пустые значения.
+```console
 taxi=# select * from company1 a left join company2 b on a.num=b.num left join company3 c on a.num=c.num;
  num |             company             | num |           company           | num | company 
 -----+---------------------------------+-----+-----------------------------+-----+---------
@@ -506,7 +527,9 @@ taxi=# select * from company1 a left join company2 b on a.num=b.num left join co
    9 | 1408 - 89599 Donald Barnes      |   9 | 1408 - 89599 Donald Barnes  |     | 
   10 | 1408 - Donald Barnes            |  10 | 1408 - Donald Barnes        |     | 
 (10 rows)
-
+```
+Выполним запрос с таким же левым соединением, но без вывода пустых значений по второй таблице. Вывод данные получился аналогичным прямому соединению.
+```console
 taxi=# select * from company1 a left join company2 b on a.num=b.num where b is not null;
  num |           company           | num |           company           
 -----+-----------------------------+-----+-----------------------------
@@ -516,7 +539,9 @@ taxi=# select * from company1 a left join company2 b on a.num=b.num where b is n
    9 | 1408 - 89599 Donald Barnes  |   9 | 1408 - 89599 Donald Barnes
   10 | 1408 - Donald Barnes        |  10 | 1408 - Donald Barnes
 (5 rows)
-
+```
+Если мы скажем в запросе выводить все нулевые значения в результате соединеня (по полю num) выбранные по второй таблице, получим все строги непересекающиеся первой таблице со второй
+```console
 taxi=# select * from company1 a left join company2 b on a.num=b.num where b is  null;
  num |             company             | num | company 
 -----+---------------------------------+-----+---------
@@ -526,11 +551,14 @@ taxi=# select * from company1 a left join company2 b on a.num=b.num where b is  
    4 | 0694 - Chinesco Trans Inc       |     | 
    5 | 1085 - 72312 N and W Cab Co     |     | 
 (5 rows)
+```console
 >Реализовать кросс соединение двух или более таблиц
 
 Соединённую таблицу образуют все возможные сочетания строк из T1 и T2 (т. е. их декартово произведение), а набор её столбцов объединяет в себе столбцы T1 со следующими за ними столбцами T2. Если таблицы содержат N и M строк, соединённая таблица будет содержать N * M строк.
-  
+При кросс соединении выборка образует все возможные сочетания строк из всех соединяемых таблиц, т е вывод такого запроса будет содержать количество строк равное перемноженному количеству строк всех участвующих в соединении таблиц
+Соединяем две первых таблицы, получаем 10*10=100 строк.
   select * from company1 a cross join company2 b ;
+```console
    9 | 1408 - 89599 Donald Barnes      |  12 | 2092 - Sbeih company
   10 | 1408 - Donald Barnes            |  12 | 2092 - Sbeih company
    1 | 0118 - 42111 Godfrey S.Awir     |  13 | 2192 - 73487 Zeymane Corp
@@ -546,7 +574,9 @@ taxi=# select * from company1 a left join company2 b on a.num=b.num where b is  
    9 | 1408 - 89599 Donald Barnes      |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso
   10 | 1408 - Donald Barnes            |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso
 (100 rows)
-
+```
+Соединяем все три таблицы, получаем 10*10*10=1000 строк
+```console
 axi=# select * from company1 a cross join company2 b cross join company2 c;
  num |             company             | num |                  company                  | num |                  company                  
 -----+---------------------------------+-----+-------------------------------------------+-----+-------------------------------------------
@@ -576,10 +606,11 @@ axi=# select * from company1 a cross join company2 b cross join company2 c;
   10 | 1408 - Donald Barnes            |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso |  14 | 2192 - Zeymane Corp
   10 | 1408 - Donald Barnes            |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso
 (1000 rows)
-
-
+```
 >Реализовать полное соединение двух или более таблиц
 
+Выполняем полное соединение двух первых таблиц по полю num, получаем все записи с данными из обоих с пересечением по указанному полю
+```console
 axi=# select * from company1 a full outer join company2 b on a.num=b.num;
  num |             company             | num |                  company                  
 -----+---------------------------------+-----+-------------------------------------------
@@ -599,7 +630,9 @@ axi=# select * from company1 a full outer join company2 b on a.num=b.num;
      |                                 |  14 | 2192 - Zeymane Corp
      |                                 |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso
 (15 rows)
-
+```
+Сделаем запрос полного соединения трех таблиц, получим вывод все строк таблиц, в том числе и третьей, хоть у нее данные не пересекаются по полю num
+```console
 taxi=# select * from company1 a full outer join company2 b on a.num=b.num full outer join company3 c on a.num=c.num;
  num |             company             | num |                  company                  | num |            company             
 -----+---------------------------------+-----+-------------------------------------------+-----+--------------------------------
@@ -629,10 +662,37 @@ taxi=# select * from company1 a full outer join company2 b on a.num=b.num full o
      |                                 |     |                                           |  24 | 2823 - 73307 Lee Express Inc
      |                                 |     |                                           |  25 | 2823 - 73307 Seung Lee
 (25 rows)
-
-
+```console
 >Реализовать запрос, в котором будут использованы разные типы соединений
 
+
+taxi=# select * from company1 a right join company2 b on a.num=b.num full outer join company3 c on a.num=c.num ;
+ num |           company           | num |                  company                  | num |            company             
+-----+-----------------------------+-----+-------------------------------------------+-----+--------------------------------
+   6 | 1085 - N and W Cab Co       |   6 | 1085 - N and W Cab Co                     |     | 
+   7 | 1247 - 72807 Daniel Ayertey |   7 | 1247 - 72807 Daniel Ayertey               |     | 
+   8 | 1247 - Daniel Ayertey       |   8 | 1247 - Daniel Ayertey                     |     | 
+   9 | 1408 - 89599 Donald Barnes  |   9 | 1408 - 89599 Donald Barnes                |     | 
+  10 | 1408 - Donald Barnes        |  10 | 1408 - Donald Barnes                      |     | 
+     |                             |  11 | 2092 - 61288 Sbeih company                |     | 
+     |                             |  12 | 2092 - Sbeih company                      |     | 
+     |                             |  13 | 2192 - 73487 Zeymane Corp                 |     | 
+     |                             |  14 | 2192 - Zeymane Corp                       |     | 
+     |                             |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso |     | 
+     |                             |     |                                           |  16 | 2241 - 44667 Manuel Alonso
+     |                             |     |                                           |  17 | 2241 - Manuel Alonso
+     |                             |     |                                           |  18 | 24 Seven Taxi
+     |                             |     |                                           |  19 | 2733 - 74600 Benny Jona
+     |                             |     |                                           |  20 | 2733 - Benny Jona
+     |                             |     |                                           |  21 | 2767 - Sayed M Badri
+     |                             |     |                                           |  22 | 2809 - 95474 C & D Cab Co Inc.
+     |                             |     |                                           |  23 | 2809 - 95474 C&D Cab Co Inc.
+     |                             |     |                                           |  24 | 2823 - 73307 Lee Express Inc
+     |                             |     |                                           |  25 | 2823 - 73307 Seung Lee
+(20 rows)
+
+taxi=# select * from company1 a right join company2 b on a.num=b.num full outer join company3 c on a.num=c.num where b is not null;
+ num |           company           | num |                  company                  | num | company 
 -----+-----------------------------+-----+-------------------------------------------+-----+---------
    6 | 1085 - N and W Cab Co       |   6 | 1085 - N and W Cab Co                     |     | 
    7 | 1247 - 72807 Daniel Ayertey |   7 | 1247 - 72807 Daniel Ayertey               |     | 
@@ -646,7 +706,6 @@ taxi=# select * from company1 a full outer join company2 b on a.num=b.num full o
      |                             |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso |     | 
 (10 rows)
 
-Time: 0.575 ms
 taxi=# select * from company1 a left join company2 b on a.num=b.num full outer join company3 c on a.num=c.num where b is null;
  num |             company             | num | company | num |            company             
 -----+---------------------------------+-----+---------+-----+--------------------------------
@@ -665,8 +724,6 @@ taxi=# select * from company1 a left join company2 b on a.num=b.num full outer j
      |                                 |     |         |  23 | 2809 - 95474 C&D Cab Co Inc.
      |                                 |     |         |  24 | 2823 - 73307 Lee Express Inc
      |                                 |     |         |  25 | 2823 - 73307 Seung Lee
-(15 rows)
-
 
 >Сделать комментарии на каждый запрос
 >К работе приложить структуру таблиц, для которых выполнялись соединения
