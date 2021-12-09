@@ -400,11 +400,275 @@ taxi-# group by taxi_id, trip_end_timestamp::date;
 # 2 вариант: 
 >В результате выполнения ДЗ вы научитесь пользоваться различными вариантами соединения таблиц. В данном задании тренируются навыки:
 >написания запросов с различными типами соединений Необходимо:
+create index idx_company on taxi_trips(company);
+taxi=# create table company1 as select row_number () over () num, t.company from (select distinct company from taxi_trips where company is not null limit 10) t;
+SELECT 10
+Time: 6.785 ms
+taxi=# create table company2 as select (row_number () over ())::int+5 num, t.company from (select distinct company from taxi_trips where company is not null offset 
+5 limit 10) t;
+SELECT 10
+Time: 5.492 ms
+taxi=# create table company3 as select (row_number () over ())::int+15 num, t.company from (select distinct company from taxi_trips where company is not null offset
+ 15 limit 10) t;
+SELECT 10
+Time: 10.556 ms
+taxi=# select * from company1;
+ num        |             company             
+------------+---------------------------------
+          1 | 0118 - 42111 Godfrey S.Awir
+          2 | 0118 - Godfrey S.Awir
+          3 | 0694 - 59280 Chinesco Trans Inc
+          4 | 0694 - Chinesco Trans Inc
+          5 | 1085 - 72312 N and W Cab Co
+          6 | 1085 - N and W Cab Co
+          7 | 1247 - 72807 Daniel Ayertey
+          8 | 1247 - Daniel Ayertey
+          9 | 1408 - 89599 Donald Barnes
+         10 | 1408 - Donald Barnes
+(10 rows)
+
+taxi=# select * from company2;
+ num      |                  company                  
+----------+-------------------------------------------
+        6 | 1085 - N and W Cab Co
+        7 | 1247 - 72807 Daniel Ayertey
+        8 | 1247 - Daniel Ayertey
+        9 | 1408 - 89599 Donald Barnes
+       10 | 1408 - Donald Barnes
+       11 | 2092 - 61288 Sbeih company
+       12 | 2092 - Sbeih company
+       13 | 2192 - 73487 Zeymane Corp
+       14 | 2192 - Zeymane Corp
+       15 | 2241 - 44667 - Felman Corp, Manuel Alonso
+(10 rows)
+
+taxi=# select * from company3;
+ num      |            company             
+----------+--------------------------------
+       16 | 2241 - 44667 Manuel Alonso
+       17 | 2241 - Manuel Alonso
+       18 | 24 Seven Taxi
+       19 | 2733 - 74600 Benny Jona
+       20 | 2733 - Benny Jona
+       21 | 2767 - Sayed M Badri
+       22 | 2809 - 95474 C & D Cab Co Inc.
+       23 | 2809 - 95474 C&D Cab Co Inc.
+       24 | 2823 - 73307 Lee Express Inc
+       25 | 2823 - 73307 Seung Lee
+(10 rows)
+
+
+
+
 >Реализовать прямое соединение двух или более таблиц
+
+taxi=# select * from company1 a, company2 b  where a.num=b.num;
+ num |           company           | num |           company           
+-----+-----------------------------+-----+-----------------------------
+   6 | 1085 - N and W Cab Co       |   6 | 1085 - N and W Cab Co
+   7 | 1247 - 72807 Daniel Ayertey |   7 | 1247 - 72807 Daniel Ayertey
+   8 | 1247 - Daniel Ayertey       |   8 | 1247 - Daniel Ayertey
+   9 | 1408 - 89599 Donald Barnes  |   9 | 1408 - 89599 Donald Barnes
+  10 | 1408 - Donald Barnes        |  10 | 1408 - Donald Barnes
+(5 rows)
+
+taxi=# select * from company1 a, company2 b, company3 c where a.num=b.num and a.num=c.num;
+ num | company | num | company | num | company 
+-----+---------+-----+---------+-----+---------
+(0 rows)
+
 >Реализовать левостороннее (или правостороннее) соединение двух или более таблиц
+taxi=# select * from company1 a left join company2 b on a.num=b.num;
+ num |             company             | num |           company           
+-----+---------------------------------+-----+-----------------------------
+   1 | 0118 - 42111 Godfrey S.Awir     |     | 
+   2 | 0118 - Godfrey S.Awir           |     | 
+   3 | 0694 - 59280 Chinesco Trans Inc |     | 
+   4 | 0694 - Chinesco Trans Inc       |     | 
+   5 | 1085 - 72312 N and W Cab Co     |     | 
+   6 | 1085 - N and W Cab Co           |   6 | 1085 - N and W Cab Co
+   7 | 1247 - 72807 Daniel Ayertey     |   7 | 1247 - 72807 Daniel Ayertey
+   8 | 1247 - Daniel Ayertey           |   8 | 1247 - Daniel Ayertey
+   9 | 1408 - 89599 Donald Barnes      |   9 | 1408 - 89599 Donald Barnes
+  10 | 1408 - Donald Barnes            |  10 | 1408 - Donald Barnes
+(10 rows)
+taxi=# select * from company1 a left join company2 b on a.num=b.num left join company3 c on a.num=c.num;
+ num |             company             | num |           company           | num | company 
+-----+---------------------------------+-----+-----------------------------+-----+---------
+   1 | 0118 - 42111 Godfrey S.Awir     |     |                             |     | 
+   2 | 0118 - Godfrey S.Awir           |     |                             |     | 
+   3 | 0694 - 59280 Chinesco Trans Inc |     |                             |     | 
+   4 | 0694 - Chinesco Trans Inc       |     |                             |     | 
+   5 | 1085 - 72312 N and W Cab Co     |     |                             |     | 
+   6 | 1085 - N and W Cab Co           |   6 | 1085 - N and W Cab Co       |     | 
+   7 | 1247 - 72807 Daniel Ayertey     |   7 | 1247 - 72807 Daniel Ayertey |     | 
+   8 | 1247 - Daniel Ayertey           |   8 | 1247 - Daniel Ayertey       |     | 
+   9 | 1408 - 89599 Donald Barnes      |   9 | 1408 - 89599 Donald Barnes  |     | 
+  10 | 1408 - Donald Barnes            |  10 | 1408 - Donald Barnes        |     | 
+(10 rows)
+
+taxi=# select * from company1 a left join company2 b on a.num=b.num where b is not null;
+ num |           company           | num |           company           
+-----+-----------------------------+-----+-----------------------------
+   6 | 1085 - N and W Cab Co       |   6 | 1085 - N and W Cab Co
+   7 | 1247 - 72807 Daniel Ayertey |   7 | 1247 - 72807 Daniel Ayertey
+   8 | 1247 - Daniel Ayertey       |   8 | 1247 - Daniel Ayertey
+   9 | 1408 - 89599 Donald Barnes  |   9 | 1408 - 89599 Donald Barnes
+  10 | 1408 - Donald Barnes        |  10 | 1408 - Donald Barnes
+(5 rows)
+
+taxi=# select * from company1 a left join company2 b on a.num=b.num where b is  null;
+ num |             company             | num | company 
+-----+---------------------------------+-----+---------
+   1 | 0118 - 42111 Godfrey S.Awir     |     | 
+   2 | 0118 - Godfrey S.Awir           |     | 
+   3 | 0694 - 59280 Chinesco Trans Inc |     | 
+   4 | 0694 - Chinesco Trans Inc       |     | 
+   5 | 1085 - 72312 N and W Cab Co     |     | 
+(5 rows)
 >Реализовать кросс соединение двух или более таблиц
+
+Соединённую таблицу образуют все возможные сочетания строк из T1 и T2 (т. е. их декартово произведение), а набор её столбцов объединяет в себе столбцы T1 со следующими за ними столбцами T2. Если таблицы содержат N и M строк, соединённая таблица будет содержать N * M строк.
+  
+  select * from company1 a cross join company2 b ;
+   9 | 1408 - 89599 Donald Barnes      |  12 | 2092 - Sbeih company
+  10 | 1408 - Donald Barnes            |  12 | 2092 - Sbeih company
+   1 | 0118 - 42111 Godfrey S.Awir     |  13 | 2192 - 73487 Zeymane Corp
+   2 | 0118 - Godfrey S.Awir           |  13 | 2192 - 73487 Zeymane Corp
+   3 | 0694 - 59280 Chinesco Trans Inc |  13 | 2192 - 73487 Zeymane Corp
+...
+   3 | 0694 - 59280 Chinesco Trans Inc |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso
+   4 | 0694 - Chinesco Trans Inc       |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso
+   5 | 1085 - 72312 N and W Cab Co     |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso
+   6 | 1085 - N and W Cab Co           |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso
+   7 | 1247 - 72807 Daniel Ayertey     |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso
+   8 | 1247 - Daniel Ayertey           |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso
+   9 | 1408 - 89599 Donald Barnes      |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso
+  10 | 1408 - Donald Barnes            |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso
+(100 rows)
+
+axi=# select * from company1 a cross join company2 b cross join company2 c;
+ num |             company             | num |                  company                  | num |                  company                  
+-----+---------------------------------+-----+-------------------------------------------+-----+-------------------------------------------
+   1 | 0118 - 42111 Godfrey S.Awir     |   6 | 1085 - N and W Cab Co                     |   6 | 1085 - N and W Cab Co
+   1 | 0118 - 42111 Godfrey S.Awir     |   6 | 1085 - N and W Cab Co                     |   7 | 1247 - 72807 Daniel Ayertey
+   1 | 0118 - 42111 Godfrey S.Awir     |   6 | 1085 - N and W Cab Co                     |   8 | 1247 - Daniel Ayertey
+   1 | 0118 - 42111 Godfrey S.Awir     |   6 | 1085 - N and W Cab Co                     |   9 | 1408 - 89599 Donald Barnes
+   1 | 0118 - 42111 Godfrey S.Awir     |   6 | 1085 - N and W Cab Co                     |  10 | 1408 - Donald Barnes
+   1 | 0118 - 42111 Godfrey S.Awir     |   6 | 1085 - N and W Cab Co                     |  11 | 2092 - 61288 Sbeih company
+   1 | 0118 - 42111 Godfrey S.Awir     |   6 | 1085 - N and W Cab Co                     |  12 | 2092 - Sbeih company
+   1 | 0118 - 42111 Godfrey S.Awir     |   6 | 1085 - N and W Cab Co                     |  13 | 2192 - 73487 Zeymane Corp
+   1 | 0118 - 42111 Godfrey S.Awir     |   6 | 1085 - N and W Cab Co                     |  14 | 2192 - Zeymane Corp
+   1 | 0118 - 42111 Godfrey S.Awir     |   6 | 1085 - N and W Cab Co                     |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso
+   2 | 0118 - Godfrey S.Awir           |   6 | 1085 - N and W Cab Co                     |   6 | 1085 - N and W Cab Co
+   2 | 0118 - Godfrey S.Awir           |   6 | 1085 - N and W Cab Co                     |   7 | 1247 - 72807 Daniel Ayertey
+   2 | 0118 - Godfrey S.Awir           |   6 | 1085 - N and W Cab Co                     |   8 | 1247 - Daniel Ayertey
+   2 | 0118 - Godfrey S.Awir           |   6 | 1085 - N and W Cab Co                     |   9 | 1408 - 89599 Donald Barnes
+   2 | 0118 - Godfrey S.Awir           |   6 | 1085 - N and W Cab Co                     |  10 | 1408 - Donald Barnes
+   2 | 0118 - Godfrey S.Awir           |   6 | 1085 - N and W Cab Co                     |  11 | 2092 - 61288 Sbeih company
+   2 | 0118 - Godfrey S.Awir           |   6 | 1085 - N and W Cab Co                     |  12 | 2092 - Sbeih company
+   2 | 0118 - Godfrey S.Awir           |   6 | 1085 - N and W Cab Co                     |  13 | 2192 - 73487 Zeymane Corp
+...
+  10 | 1408 - Donald Barnes            |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso |  10 | 1408 - Donald Barnes
+  10 | 1408 - Donald Barnes            |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso |  11 | 2092 - 61288 Sbeih company
+  10 | 1408 - Donald Barnes            |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso |  12 | 2092 - Sbeih company
+  10 | 1408 - Donald Barnes            |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso |  13 | 2192 - 73487 Zeymane Corp
+  10 | 1408 - Donald Barnes            |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso |  14 | 2192 - Zeymane Corp
+  10 | 1408 - Donald Barnes            |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso
+(1000 rows)
+
+
 >Реализовать полное соединение двух или более таблиц
+
+axi=# select * from company1 a full outer join company2 b on a.num=b.num;
+ num |             company             | num |                  company                  
+-----+---------------------------------+-----+-------------------------------------------
+   1 | 0118 - 42111 Godfrey S.Awir     |     | 
+   2 | 0118 - Godfrey S.Awir           |     | 
+   3 | 0694 - 59280 Chinesco Trans Inc |     | 
+   4 | 0694 - Chinesco Trans Inc       |     | 
+   5 | 1085 - 72312 N and W Cab Co     |     | 
+   6 | 1085 - N and W Cab Co           |   6 | 1085 - N and W Cab Co
+   7 | 1247 - 72807 Daniel Ayertey     |   7 | 1247 - 72807 Daniel Ayertey
+   8 | 1247 - Daniel Ayertey           |   8 | 1247 - Daniel Ayertey
+   9 | 1408 - 89599 Donald Barnes      |   9 | 1408 - 89599 Donald Barnes
+  10 | 1408 - Donald Barnes            |  10 | 1408 - Donald Barnes
+     |                                 |  11 | 2092 - 61288 Sbeih company
+     |                                 |  12 | 2092 - Sbeih company
+     |                                 |  13 | 2192 - 73487 Zeymane Corp
+     |                                 |  14 | 2192 - Zeymane Corp
+     |                                 |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso
+(15 rows)
+
+taxi=# select * from company1 a full outer join company2 b on a.num=b.num full outer join company3 c on a.num=c.num;
+ num |             company             | num |                  company                  | num |            company             
+-----+---------------------------------+-----+-------------------------------------------+-----+--------------------------------
+   1 | 0118 - 42111 Godfrey S.Awir     |     |                                           |     | 
+   2 | 0118 - Godfrey S.Awir           |     |                                           |     | 
+   3 | 0694 - 59280 Chinesco Trans Inc |     |                                           |     | 
+   4 | 0694 - Chinesco Trans Inc       |     |                                           |     | 
+   5 | 1085 - 72312 N and W Cab Co     |     |                                           |     | 
+   6 | 1085 - N and W Cab Co           |   6 | 1085 - N and W Cab Co                     |     | 
+   7 | 1247 - 72807 Daniel Ayertey     |   7 | 1247 - 72807 Daniel Ayertey               |     | 
+   8 | 1247 - Daniel Ayertey           |   8 | 1247 - Daniel Ayertey                     |     | 
+   9 | 1408 - 89599 Donald Barnes      |   9 | 1408 - 89599 Donald Barnes                |     | 
+  10 | 1408 - Donald Barnes            |  10 | 1408 - Donald Barnes                      |     | 
+     |                                 |  11 | 2092 - 61288 Sbeih company                |     | 
+     |                                 |  12 | 2092 - Sbeih company                      |     | 
+     |                                 |  13 | 2192 - 73487 Zeymane Corp                 |     | 
+     |                                 |  14 | 2192 - Zeymane Corp                       |     | 
+     |                                 |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso |     | 
+     |                                 |     |                                           |  16 | 2241 - 44667 Manuel Alonso
+     |                                 |     |                                           |  17 | 2241 - Manuel Alonso
+     |                                 |     |                                           |  18 | 24 Seven Taxi
+     |                                 |     |                                           |  19 | 2733 - 74600 Benny Jona
+     |                                 |     |                                           |  20 | 2733 - Benny Jona
+     |                                 |     |                                           |  21 | 2767 - Sayed M Badri
+     |                                 |     |                                           |  22 | 2809 - 95474 C & D Cab Co Inc.
+     |                                 |     |                                           |  23 | 2809 - 95474 C&D Cab Co Inc.
+     |                                 |     |                                           |  24 | 2823 - 73307 Lee Express Inc
+     |                                 |     |                                           |  25 | 2823 - 73307 Seung Lee
+(25 rows)
+
+
 >Реализовать запрос, в котором будут использованы разные типы соединений
+
+-----+-----------------------------+-----+-------------------------------------------+-----+---------
+   6 | 1085 - N and W Cab Co       |   6 | 1085 - N and W Cab Co                     |     | 
+   7 | 1247 - 72807 Daniel Ayertey |   7 | 1247 - 72807 Daniel Ayertey               |     | 
+   8 | 1247 - Daniel Ayertey       |   8 | 1247 - Daniel Ayertey                     |     | 
+   9 | 1408 - 89599 Donald Barnes  |   9 | 1408 - 89599 Donald Barnes                |     | 
+  10 | 1408 - Donald Barnes        |  10 | 1408 - Donald Barnes                      |     | 
+     |                             |  11 | 2092 - 61288 Sbeih company                |     | 
+     |                             |  12 | 2092 - Sbeih company                      |     | 
+     |                             |  13 | 2192 - 73487 Zeymane Corp                 |     | 
+     |                             |  14 | 2192 - Zeymane Corp                       |     | 
+     |                             |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso |     | 
+(10 rows)
+
+Time: 0.575 ms
+taxi=# select * from company1 a left join company2 b on a.num=b.num full outer join company3 c on a.num=c.num where b is null;
+ num |             company             | num | company | num |            company             
+-----+---------------------------------+-----+---------+-----+--------------------------------
+   1 | 0118 - 42111 Godfrey S.Awir     |     |         |     | 
+   2 | 0118 - Godfrey S.Awir           |     |         |     | 
+   3 | 0694 - 59280 Chinesco Trans Inc |     |         |     | 
+   4 | 0694 - Chinesco Trans Inc       |     |         |     | 
+   5 | 1085 - 72312 N and W Cab Co     |     |         |     | 
+     |                                 |     |         |  16 | 2241 - 44667 Manuel Alonso
+     |                                 |     |         |  17 | 2241 - Manuel Alonso
+     |                                 |     |         |  18 | 24 Seven Taxi
+     |                                 |     |         |  19 | 2733 - 74600 Benny Jona
+     |                                 |     |         |  20 | 2733 - Benny Jona
+     |                                 |     |         |  21 | 2767 - Sayed M Badri
+     |                                 |     |         |  22 | 2809 - 95474 C & D Cab Co Inc.
+     |                                 |     |         |  23 | 2809 - 95474 C&D Cab Co Inc.
+     |                                 |     |         |  24 | 2823 - 73307 Lee Express Inc
+     |                                 |     |         |  25 | 2823 - 73307 Seung Lee
+(15 rows)
+
+
 >Сделать комментарии на каждый запрос
 >К работе приложить структуру таблиц, для которых выполнялись соединения
 >Придумайте 3 своих метрики на основе показанных представлений, отправьте их через ЛК, а так же поделитесь с коллегами в слаке
+
