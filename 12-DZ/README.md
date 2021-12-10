@@ -418,7 +418,7 @@ Time: 6.785 ms
 taxi=# create table company2 as select (row_number () over ())::int+5 num, t.company from (select distinct company from taxi_trips where company is not null offset 
 5 limit 10) t;
 SELECT 10
-Time: 5.492 ms
+Time: 5.492 ms 
 ```
 Создадим таблицу, непересекающуюся данными ни с какой из таблиц, company3 с нумерацией по строкам от 16 до 25
 ```console
