@@ -742,3 +742,51 @@ taxi=# select * from company1 a left join company2 b on a.num=b.num full outer j
 >К работе приложить структуру таблиц, для которых выполнялись соединения
 >Придумайте 3 своих метрики на основе показанных представлений, отправьте их через ЛК, а так же поделитесь с коллегами в слаке
 
+```console
+taxi=# select relid,schemaname,relname,n_live_tup,n_dead_tup,n_dead_tup*100/n_live_tup p from pg_stat_all_tables where n_live_tup<>0 and n_dead_tup<>0;
+ relid | schemaname |   relname    | n_live_tup | n_dead_tup |  p  
+-------+------------+--------------+------------+------------+-----
+  2608 | pg_catalog | pg_depend    |         24 |         30 | 125
+  2610 | pg_catalog | pg_index     |          6 |          5 |  83
+  1249 | pg_catalog | pg_attribute |         63 |         95 | 150
+  1259 | pg_catalog | pg_class     |         12 |         15 | 125
+  1247 | pg_catalog | pg_type      |          6 |         10 | 166
+(5 rows)
+```
+```console
+taxi=# select relid,schemaname,relname,n_live_tup,n_dead_tup,n_dead_tup*100/n_live_tup p from pg_stat_user_tables where n_live_tup<>0 and n_dead_tup<>0;
+ relid | schemaname | relname | n_live_tup | n_dead_tup | p 
+-------+------------+---------+------------+------------+---
+(0 rows)
+```
+
+taxi=# delete from taxi_trips where trip_start_timestamp::date between date '2016-11-01' and date'2017-01-02';
+DELETE 1227856
+
+taxi=# alter table taxi_trips set (autovacuum_enabled = false);
+ALTER TABLE
+
+taxi=# SELECT reloptions FROM pg_class WHERE relname = 'taxi_trips';
+         reloptions         
+----------------------------
+ {autovacuum_enabled=false}
+(1 row)
+
+taxi=# delete from taxi_trips where trip_start_timestamp::date between date '2017-01-03' and date'2017-02-04';
+DELETE 201230
+
+taxi=# select relid,schemaname,relname,n_live_tup,n_dead_tup,n_dead_tup*100/n_live_tup p from pg_stat_user_tables where n_live_tup<>0 and n_dead_tup<>0;
+ relid | schemaname |  relname   | n_live_tup | n_dead_tup | p 
+-------+------------+------------+------------+------------+---
+ 16390 | public     | taxi_trips |    4740236 |     201230 | 4
+(1 row)
+
+taxi=# vacuum  taxi_trips ;
+VACUUM
+taxi=# select relid,schemaname,relname,n_live_tup,n_dead_tup,n_dead_tup*100/n_live_tup p from pg_stat_user_tables where n_live_tup<>0 and n_dead_tup<>0;
+ relid | schemaname | relname | n_live_tup | n_dead_tup | p 
+-------+------------+---------+------------+------------+---
+(0 rows)
+
+
+
