@@ -869,7 +869,7 @@ taxi=# select datname,pid,usename,application_name,client_addr,backend_start fro
 taxi=# select datname,pid,usename,application_name,client_addr,backend_start from pg_stat_activity where client_addr is not null order by backend_start desc;
  datname | pid | usename | application_name | client_addr | backend_start 
 ---------+-----+---------+------------------+-------------+---------------
-(0 rows)
+(0 rows) 
 
 
 
