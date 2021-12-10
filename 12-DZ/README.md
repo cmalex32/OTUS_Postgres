@@ -409,24 +409,27 @@ create index idx_company on taxi_trips(company);
 ```
 Создадим таблицу company1 с нумерацией по строкам от 1 до 10
 ```console
-taxi=# create table company1 as select row_number () over () num, t.company from (select distinct company from taxi_trips where company is not null limit 10) t;
+taxi=# create table company1 as select row_number () over () num, t.company from 
+  (select distinct company from taxi_trips where company is not null limit 10) t;
 SELECT 10
 Time: 6.785 ms
 ```
 Создадим таблицу company2 с нумерацией по строкам от 6 до 15, она пересекается данными с первой таблицей
 ```console
-taxi=# create table company2 as select (row_number () over ())::int+5 num, t.company from (select distinct company from taxi_trips where company is not null offset 
+taxi=# create table company2 as select (row_number () over ())::int+5 num, t.company from 
+  (select distinct company from taxi_trips where company is not null offset 
 5 limit 10) t;
 SELECT 10
 Time: 5.492 ms 
 ```
 Создадим таблицу, непересекающуюся данными ни с какой из таблиц, company3 с нумерацией по строкам от 16 до 25
 ```console
-taxi=# create table company3 as select (row_number () over ())::int+15 num, t.company from (select distinct company from taxi_trips where company is not null offset
+taxi=# create table company3 as select (row_number () over ())::int+15 num, t.company from 
+  (select distinct company from taxi_trips where company is not null offset
  15 limit 10) t;
 SELECT 10
 Time: 10.556 ms
-```console
+```
 Посмотрим содержимое созданных таблиц. Все должно быть как задумано.
 ```console
 taxi=# select * from company1;
