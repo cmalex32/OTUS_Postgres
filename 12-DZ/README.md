@@ -125,7 +125,7 @@ taxi-# group by taxi_id;
                      ->  Parallel Seq Scan on taxi_trips  (cost=0.00..374224.23 rows=2666023 width=131)
 (9 rows)
 ```
-Создадим индекс по групперуемому полю taxi_id
+Создадим индекс по группируемому полю taxi_id
 ```console
 taxi=# create index idx_taxi_id on taxi_trips(taxi_id);
 CREATE INDEX
