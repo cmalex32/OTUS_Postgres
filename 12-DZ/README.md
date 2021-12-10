@@ -855,3 +855,21 @@ taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_i
  16390 | public     | taxi_trips | idx_unique_key4_company  |        2
 (8 rows)
 
+taxi=# select datname,pid,usename,application_name,client_addr,backend_start from pg_stat_activity order by backend_start desc;
+ datname | pid  | usename  | application_name | client_addr |         backend_start         
+---------+------+----------+------------------+-------------+-------------------------------
+ taxi    | 9087 | postgres | psql             |             | 2021-12-10 08:19:47.016521+00
+         | 2070 | postgres |                  |             | 2021-12-09 11:53:31.011884+00
+         | 2067 |          |                  |             | 2021-12-09 11:53:31.011148+00
+         | 2068 |          |                  |             | 2021-12-09 11:53:31.010371+00
+         | 2066 |          |                  |             | 2021-12-09 11:53:31.00967+00
+         | 2065 |          |                  |             | 2021-12-09 11:53:31.008976+00
+(6 rows)
+
+taxi=# select datname,pid,usename,application_name,client_addr,backend_start from pg_stat_activity where client_addr is not null order by backend_start desc;
+ datname | pid | usename | application_name | client_addr | backend_start 
+---------+-----+---------+------------------+-------------+---------------
+(0 rows)
+
+
+
