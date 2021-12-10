@@ -788,5 +788,70 @@ taxi=# select relid,schemaname,relname,n_live_tup,n_dead_tup,n_dead_tup*100/n_li
 -------+------------+---------+------------+------------+---
 (0 rows)
 
+taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_indexes order by idx_scan;
+ relid | schemaname |  relname   |       indexrelname       | idx_scan 
+-------+------------+------------+--------------------------+----------
+ 16390 | public     | taxi_trips | idx_taxi_id              |        0
+ 16390 | public     | taxi_trips | search_index_company     |        0
+ 16390 | public     | taxi_trips | idx_taxi_start_date_part |        0
+ 16390 | public     | taxi_trips | idx_taxi_id_end_date     |        0
+ 16390 | public     | taxi_trips | idx_unique_key4_company  |        2
+ 16390 | public     | taxi_trips | idx_taxi_id_company      |        4
+ 16390 | public     | taxi_trips | idx_unique_key_company   |        6
+ 16390 | public     | taxi_trips | idx_company              |       15
+(8 rows)
 
+taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_indexes where idx_scan =0;
+ relid | schemaname |  relname   |       indexrelname       | idx_scan 
+-------+------------+------------+--------------------------+----------
+ 16390 | public     | taxi_trips | idx_taxi_id              |        0
+ 16390 | public     | taxi_trips | search_index_company     |        0
+ 16390 | public     | taxi_trips | idx_taxi_start_date_part |        0
+ 16390 | public     | taxi_trips | idx_taxi_id_end_date     |        0
+(4 rows)
+
+taxi=# select taxi_id, count(*) from taxi_trips group by taxi_id;
+
+taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_indexes where idx_scan =0;
+ relid | schemaname |  relname   |       indexrelname       | idx_scan 
+-------+------------+------------+--------------------------+----------
+ 16390 | public     | taxi_trips | idx_taxi_id              |        0
+ 16390 | public     | taxi_trips | search_index_company     |        0
+ 16390 | public     | taxi_trips | idx_taxi_start_date_part |        0
+ 16390 | public     | taxi_trips | idx_taxi_id_end_date     |        0
+(4 rows)
+
+taxi=# select company, count(*) from taxi_trips where search_company @@ to_tsquery('Chicago') group by company;
+                 company                  | count  
+------------------------------------------+--------
+ Chicago Carriage Cab Corp                | 242427
+ Chicago Elite Cab Corp.                  |      9
+ Chicago Elite Cab Corp. (Chicago Carriag | 175334
+ Chicago Independents                     |  19231
+ Chicago Medallion Leasing INC            |  24558
+ Chicago Medallion Management             |  14154
+ Chicago Star Taxicab                     |    203
+ Chicago Taxicab                          |  21596
+(8 rows)
+
+taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_indexes where idx_scan =0;
+ relid | schemaname |  relname   |       indexrelname       | idx_scan 
+-------+------------+------------+--------------------------+----------
+ 16390 | public     | taxi_trips | idx_taxi_id              |        0
+ 16390 | public     | taxi_trips | idx_taxi_start_date_part |        0
+ 16390 | public     | taxi_trips | idx_taxi_id_end_date     |        0
+(3 rows)
+
+taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_indexes;
+ relid | schemaname |  relname   |       indexrelname       | idx_scan 
+-------+------------+------------+--------------------------+----------
+ 16390 | public     | taxi_trips | idx_taxi_id              |        0
+ 16390 | public     | taxi_trips | search_index_company     |        1
+ 16390 | public     | taxi_trips | idx_taxi_id_company      |        7
+ 16390 | public     | taxi_trips | idx_unique_key_company   |        6
+ 16390 | public     | taxi_trips | idx_taxi_start_date_part |        0
+ 16390 | public     | taxi_trips | idx_taxi_id_end_date     |        0
+ 16390 | public     | taxi_trips | idx_company              |       15
+ 16390 | public     | taxi_trips | idx_unique_key4_company  |        2
+(8 rows)
 
