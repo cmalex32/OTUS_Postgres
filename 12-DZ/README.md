@@ -489,7 +489,7 @@ taxi=# select * from company1 a, company2 b  where a.num=b.num;
    9 | 1408 - 89599 Donald Barnes  |   9 | 1408 - 89599 Donald Barnes
   10 | 1408 - Donald Barnes        |  10 | 1408 - Donald Barnes
 (5 rows)
-```console
+```
 Проделаем туже операцию с тремя таблицами, так как в третьей таблице нет пересечения по полю num ни с одной таблицей, получаем нулевой редзультат.
 ```console
 taxi=# select * from company1 a, company2 b, company3 c where a.num=b.num and a.num=c.num;
@@ -556,14 +556,13 @@ taxi=# select * from company1 a left join company2 b on a.num=b.num where b is  
    4 | 0694 - Chinesco Trans Inc       |     | 
    5 | 1085 - 72312 N and W Cab Co     |     | 
 (5 rows)
-```console
+```
 >Реализовать кросс соединение двух или более таблиц
 
-Соединённую таблицу образуют все возможные сочетания строк из T1 и T2 (т. е. их декартово произведение), а набор её столбцов объединяет в себе столбцы T1 со следующими за ними столбцами T2. Если таблицы содержат N и M строк, соединённая таблица будет содержать N * M строк.
 При кросс соединении выборка образует все возможные сочетания строк из всех соединяемых таблиц, т е вывод такого запроса будет содержать количество строк равное перемноженному количеству строк всех участвующих в соединении таблиц
-Соединяем две первых таблицы, получаем 10*10=100 строк.
-  select * from company1 a cross join company2 b ;
+Соединяем две первых таблицы, получаем 10\*10=100 строк.  
 ```console
+select * from company1 a cross join company2 b ;
    9 | 1408 - 89599 Donald Barnes      |  12 | 2092 - Sbeih company
   10 | 1408 - Donald Barnes            |  12 | 2092 - Sbeih company
    1 | 0118 - 42111 Godfrey S.Awir     |  13 | 2192 - 73487 Zeymane Corp
@@ -580,7 +579,8 @@ taxi=# select * from company1 a left join company2 b on a.num=b.num where b is  
   10 | 1408 - Donald Barnes            |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso
 (100 rows)
 ```
-Соединяем все три таблицы, получаем 10*10*10=1000 строк
+
+Соединяем все три таблицы, получаем 10\*10\*10=1000 строк
 ```console
 axi=# select * from company1 a cross join company2 b cross join company2 c;
  num |             company             | num |                  company                  | num |                  company                  
@@ -671,7 +671,7 @@ taxi=# select * from company1 a full outer join company2 b on a.num=b.num full o
 >Реализовать запрос, в котором будут использованы разные типы соединений
 
 Создадим запрос с правым соединением первых двух таблиц и полным с третьей.
-Получаем в результате результат правого соединения, пересечение из первой таблицы со второй, полный вывод второй и в результате полного соединения с третьей, вывод всей третьей таблицы.
+Получаем в результате правого соединения, пересечение из первой таблицы со второй, полный вывод второй и в результате полного соединения с третьей, вывод всей третьей таблицы.
 ```console
 taxi=# select * from company1 a right join company2 b on a.num=b.num full outer join company3 c on a.num=c.num ;
  num |           company           | num |                  company                  | num |            company             
