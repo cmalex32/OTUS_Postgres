@@ -662,10 +662,12 @@ taxi=# select * from company1 a full outer join company2 b on a.num=b.num full o
      |                                 |     |                                           |  24 | 2823 - 73307 Lee Express Inc
      |                                 |     |                                           |  25 | 2823 - 73307 Seung Lee
 (25 rows)
-```console
+```
 >Реализовать запрос, в котором будут использованы разные типы соединений
 
-
+Создадим запрос с правым соединением первых двух таблиц и полным с третьей.
+Получаем в результате результат правого соединения, пересечение из первой таблицы со второй, полный вывод второй и в результате полного соединения с третьей, вывод всей третьей таблицы.
+```console
 taxi=# select * from company1 a right join company2 b on a.num=b.num full outer join company3 c on a.num=c.num ;
  num |           company           | num |                  company                  | num |            company             
 -----+-----------------------------+-----+-------------------------------------------+-----+--------------------------------
@@ -690,7 +692,9 @@ taxi=# select * from company1 a right join company2 b on a.num=b.num full outer 
      |                             |     |                                           |  24 | 2823 - 73307 Lee Express Inc
      |                             |     |                                           |  25 | 2823 - 73307 Seung Lee
 (20 rows)
-
+```
+Добавим к предыдущему запросу условие чтобы num по второй таблицы был не пустым, получаем просто правое соединение в пустыми записями по третьей.
+```console
 taxi=# select * from company1 a right join company2 b on a.num=b.num full outer join company3 c on a.num=c.num where b is not null;
  num |           company           | num |                  company                  | num | company 
 -----+-----------------------------+-----+-------------------------------------------+-----+---------
@@ -705,7 +709,10 @@ taxi=# select * from company1 a right join company2 b on a.num=b.num full outer 
      |                             |  14 | 2192 - Zeymane Corp                       |     | 
      |                             |  15 | 2241 - 44667 - Felman Corp, Manuel Alonso |     | 
 (10 rows)
-
+```
+Теперь сделаем левое соединение с двумя первыми таблицами и укажем чтобы выбирались из второй таблицы только нулевые значения
+Хотя и было левое соединение, на выходе только первые пять записей из первой таблицы, отработал предикат по второй таблице
+```console
 taxi=# select * from company1 a left join company2 b on a.num=b.num full outer join company3 c on a.num=c.num where b is null;
  num |             company             | num | company | num |            company             
 -----+---------------------------------+-----+---------+-----+--------------------------------
@@ -725,6 +732,7 @@ taxi=# select * from company1 a left join company2 b on a.num=b.num full outer j
      |                                 |     |         |  24 | 2823 - 73307 Lee Express Inc
      |                                 |     |         |  25 | 2823 - 73307 Seung Lee
 
+```
 >Сделать комментарии на каждый запрос
 >К работе приложить структуру таблиц, для которых выполнялись соединения
 >Придумайте 3 своих метрики на основе показанных представлений, отправьте их через ЛК, а так же поделитесь с коллегами в слаке
