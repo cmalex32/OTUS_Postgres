@@ -474,7 +474,7 @@ taxi=# select * from company3;
        24 | 2823 - 73307 Lee Express Inc
        25 | 2823 - 73307 Seung Lee
 (10 rows)
-```console
+```
 >Необходимо:  
 >Реализовать прямое соединение двух или более таблиц
 
