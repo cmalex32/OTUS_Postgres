@@ -903,10 +903,9 @@ taxi=# select datname,pid,usename,application_name,client_addr,backend_start fro
 ```
 Системные процессы лучше не учитывать, как правило все клиенты подключаются по сети, поэтому можно сделать запрос с предикатом client_addr is not null, тогда мы не будем учитывать локально подключенные сесиии  
 Выполним запрос, все подключения произведены используя консоль, поэтому на выходе ни одной записи
-
+ ```console
 taxi=# select datname,pid,usename,application_name,client_addr,backend_start from 
   pg_stat_activity where client_addr is not null order by backend_start desc;
-  ```console
  datname | pid | usename | application_name | client_addr | backend_start 
 ---------+-----+---------+------------------+-------------+---------------
 (0 rows) 
