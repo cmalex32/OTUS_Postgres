@@ -742,8 +742,11 @@ taxi=# select * from company1 a left join company2 b on a.num=b.num full outer j
 >К работе приложить структуру таблиц, для которых выполнялись соединения
 >Придумайте 3 своих метрики на основе показанных представлений, отправьте их через ЛК, а так же поделитесь с коллегами в слаке
 
+Рассмотрим часто возникающую проблему раздутия таблиц, можно подобную метрику просматривать таким запросом, учмтывать надо процент соотношения "мертвых" и "живых" строк, но надо не забывать что при малом количестве строк в таблице этот процент не особенно актуален
+По всем таблицам
 ```console
-taxi=# select relid,schemaname,relname,n_live_tup,n_dead_tup,n_dead_tup*100/n_live_tup p from pg_stat_all_tables where n_live_tup<>0 and n_dead_tup<>0;
+taxi=# select relid,schemaname,relname,n_live_tup,n_dead_tup,n_dead_tup*100/n_live_tup p from 
+  pg_stat_all_tables where n_live_tup<>0 and n_dead_tup<>0;
  relid | schemaname |   relname    | n_live_tup | n_dead_tup |  p  
 -------+------------+--------------+------------+------------+-----
   2608 | pg_catalog | pg_depend    |         24 |         30 | 125
@@ -753,41 +756,69 @@ taxi=# select relid,schemaname,relname,n_live_tup,n_dead_tup,n_dead_tup*100/n_li
   1247 | pg_catalog | pg_type      |          6 |         10 | 166
 (5 rows)
 ```
+Но обычно актуально мониторить пользовательские таблицы, на текущий момент "мертвых" строк в таблице нет
+```console
+taxi=# select relid,schemaname,relname,n_live_tup,n_dead_tup,n_dead_tup*100/n_live_tup p from 
+  pg_stat_user_tables where n_live_tup<>0 and n_dead_tup<>0;
+ relid | schemaname | relname | n_live_tup | n_dead_tup | p 
+-------+------------+---------+------------+------------+---
+(0 rows)
+```
+Поробуем удалить некоторое количество строк в таблице
+```console
+taxi=# delete from taxi_trips where trip_start_timestamp::date between date '2016-11-01' and date'2017-01-02';
+DELETE 1227856
+```
+Смотрим, результат не поменялся, вспоминаем что существует автовакуум и он, видимо отработал 
+```console
+taxi=# select relid,schemaname,relname,n_live_tup,n_dead_tup,n_dead_tup*100/n_live_tup p from 
+  pg_stat_user_tables where n_live_tup<>0 and n_dead_tup<>0;
+ relid | schemaname | relname | n_live_tup | n_dead_tup | p 
+-------+------------+---------+------------+------------+---
+(0 rows)
+```
+Выключим на этой таблице автовакуум
+```console
+taxi=# alter table taxi_trips set (autovacuum_enabled = false);
+ALTER TABLE
+```
+Посмотрим что действительно выключили
+```console
+taxi=# SELECT reloptions FROM pg_class WHERE relname = 'taxi_trips';
+         reloptions         
+----------------------------
+ {autovacuum_enabled=false}
+(1 row)
+```
+Удаляем еще раз некоторое количество строк
+```console
+taxi=# delete from taxi_trips where trip_start_timestamp::date between date '2017-01-03' and date'2017-02-04';
+DELETE 201230
+```
+Выполняем запрос, видим что появилось 4% "мертвых" строк.
+```console
+taxi=# select relid,schemaname,relname,n_live_tup,n_dead_tup,n_dead_tup*100/n_live_tup p from 
+pg_stat_user_tables where n_live_tup<>0 and n_dead_tup<>0;
+ relid | schemaname |  relname   | n_live_tup | n_dead_tup | p 
+-------+------------+------------+------------+------------+---
+ 16390 | public     | taxi_trips |    4740236 |     201230 | 4
+(1 row)
+```
+Сделаем вручную вакуум
+```console
+taxi=# vacuum  taxi_trips ;
+VACUUM
+```
+Выполним запрос, все "мертвые" строки удалены
 ```console
 taxi=# select relid,schemaname,relname,n_live_tup,n_dead_tup,n_dead_tup*100/n_live_tup p from pg_stat_user_tables where n_live_tup<>0 and n_dead_tup<>0;
  relid | schemaname | relname | n_live_tup | n_dead_tup | p 
 -------+------------+---------+------------+------------+---
 (0 rows)
 ```
-
-taxi=# delete from taxi_trips where trip_start_timestamp::date between date '2016-11-01' and date'2017-01-02';
-DELETE 1227856
-
-taxi=# alter table taxi_trips set (autovacuum_enabled = false);
-ALTER TABLE
-
-taxi=# SELECT reloptions FROM pg_class WHERE relname = 'taxi_trips';
-         reloptions         
-----------------------------
- {autovacuum_enabled=false}
-(1 row)
-
-taxi=# delete from taxi_trips where trip_start_timestamp::date between date '2017-01-03' and date'2017-02-04';
-DELETE 201230
-
-taxi=# select relid,schemaname,relname,n_live_tup,n_dead_tup,n_dead_tup*100/n_live_tup p from pg_stat_user_tables where n_live_tup<>0 and n_dead_tup<>0;
- relid | schemaname |  relname   | n_live_tup | n_dead_tup | p 
--------+------------+------------+------------+------------+---
- 16390 | public     | taxi_trips |    4740236 |     201230 | 4
-(1 row)
-
-taxi=# vacuum  taxi_trips ;
-VACUUM
-taxi=# select relid,schemaname,relname,n_live_tup,n_dead_tup,n_dead_tup*100/n_live_tup p from pg_stat_user_tables where n_live_tup<>0 and n_dead_tup<>0;
- relid | schemaname | relname | n_live_tup | n_dead_tup | p 
--------+------------+---------+------------+------------+---
-(0 rows)
-
+Рассмотрим часто возникающую ситуацию, когда создаются индексы, а потом они либо редко используются либо никогда, но при этом занимают место и увеличивают время записи на диск
+Выполним запрос, видим что некоторые индексы никогда не были использованы (idx_scan = 0)
+```console
 taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_indexes order by idx_scan;
  relid | schemaname |  relname   |       indexrelname       | idx_scan 
 -------+------------+------------+--------------------------+----------
@@ -800,7 +831,9 @@ taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_i
  16390 | public     | taxi_trips | idx_unique_key_company   |        6
  16390 | public     | taxi_trips | idx_company              |       15
 (8 rows)
-
+```
+Либо так, чтоб не выводить ненужную информацию
+```console
 taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_indexes where idx_scan =0;
  relid | schemaname |  relname   |       indexrelname       | idx_scan 
 -------+------------+------------+--------------------------+----------
@@ -809,18 +842,9 @@ taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_i
  16390 | public     | taxi_trips | idx_taxi_start_date_part |        0
  16390 | public     | taxi_trips | idx_taxi_id_end_date     |        0
 (4 rows)
-
-taxi=# select taxi_id, count(*) from taxi_trips group by taxi_id;
-
-taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_indexes where idx_scan =0;
- relid | schemaname |  relname   |       indexrelname       | idx_scan 
--------+------------+------------+--------------------------+----------
- 16390 | public     | taxi_trips | idx_taxi_id              |        0
- 16390 | public     | taxi_trips | search_index_company     |        0
- 16390 | public     | taxi_trips | idx_taxi_start_date_part |        0
- 16390 | public     | taxi_trips | idx_taxi_id_end_date     |        0
-(4 rows)
-
+```
+Попробуем выполнить запрос с использованием индекса search_index_company
+```console
 taxi=# select company, count(*) from taxi_trips where search_company @@ to_tsquery('Chicago') group by company;
                  company                  | count  
 ------------------------------------------+--------
@@ -833,7 +857,9 @@ taxi=# select company, count(*) from taxi_trips where search_company @@ to_tsque
  Chicago Star Taxicab                     |    203
  Chicago Taxicab                          |  21596
 (8 rows)
-
+```
+Выполним запрос, видим что этот индекс уже в условия запроса не попадает
+```console
 taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_indexes where idx_scan =0;
  relid | schemaname |  relname   |       indexrelname       | idx_scan 
 -------+------------+------------+--------------------------+----------
@@ -841,9 +867,11 @@ taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_i
  16390 | public     | taxi_trips | idx_taxi_start_date_part |        0
  16390 | public     | taxi_trips | idx_taxi_id_end_date     |        0
 (3 rows)
-
+```
+Выполним здапрос без предиката, видим что индекс был сканирован нашим запросом один раз
+```console
 taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_indexes;
- relid | schemaname |  relname   |       indexrelname       | idx_scan 
+ relid | sche```consolemaname |  relname   |       indexrelname       | idx_scan 
 -------+------------+------------+--------------------------+----------
  16390 | public     | taxi_trips | idx_taxi_id              |        0
  16390 | public     | taxi_trips | search_index_company     |        1
@@ -854,7 +882,12 @@ taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_i
  16390 | public     | taxi_trips | idx_company              |       15
  16390 | public     | taxi_trips | idx_unique_key4_company  |        2
 (8 rows)
-
+```
+Частой проблемой бывает зависшие сессии пользователей, либо разработчиков, которые месяцами не выходят из своих подключений к БД
+Это приводит к тому что "замораживается" горизонт данных и таблицы не очищается автовакуумом
+Такие сессии надо отслеживать и "убивать"
+Сессии можно искать подобной выборкой из таблицы pg_stat_activity просматривая поле backend_start, оценивать сколько должна существовать сессия надо по потребностям конкретной информационной системы 
+```console
 taxi=# select datname,pid,usename,application_name,client_addr,backend_start from pg_stat_activity order by backend_start desc;
  datname | pid  | usename  | application_name | client_addr |         backend_start         
 ---------+------+----------+------------------+-------------+-------------------------------
@@ -865,11 +898,16 @@ taxi=# select datname,pid,usename,application_name,client_addr,backend_start fro
          | 2066 |          |                  |             | 2021-12-09 11:53:31.00967+00
          | 2065 |          |                  |             | 2021-12-09 11:53:31.008976+00
 (6 rows)
+```
+Системные процессы лучше не учитывать, как правило все клиенты подключаются по сети, поэтому можно сделать запрос с предикатом client_addr is not null, тогда мы не будем учитывать локально подключенные сесиии
+Выполним запрос, все подключения произведены используя консоль, поэтому на выходе ни одной записи
 
-taxi=# select datname,pid,usename,application_name,client_addr,backend_start from pg_stat_activity where client_addr is not null order by backend_start desc;
+taxi=# select datname,pid,usename,application_name,client_addr,backend_start from 
+  pg_stat_activity where client_addr is not null order by backend_start desc;
+  ```console
  datname | pid | usename | application_name | client_addr | backend_start 
 ---------+-----+---------+------------------+-------------+---------------
 (0 rows) 
-
+```
 
 
