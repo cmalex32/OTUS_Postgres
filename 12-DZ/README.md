@@ -742,7 +742,7 @@ taxi=# select * from company1 a left join company2 b on a.num=b.num full outer j
 >К работе приложить структуру таблиц, для которых выполнялись соединения
 >Придумайте 3 своих метрики на основе показанных представлений, отправьте их через ЛК, а так же поделитесь с коллегами в слаке
 
-Рассмотрим часто возникающую проблему раздутия таблиц, можно подобную метрику просматривать таким запросом, учмтывать надо процент соотношения "мертвых" и "живых" строк, но надо не забывать что при малом количестве строк в таблице этот процент не особенно актуален
+Рассмотрим часто возникающую проблему раздутия таблиц, можно подобную метрику просматривать таким запросом, учитывать надо процент соотношения "мертвых" и "живых" строк, но надо не забывать что при малом количестве строк в таблице этот процент не особенно актуален  
 По всем таблицам
 ```console
 taxi=# select relid,schemaname,relname,n_live_tup,n_dead_tup,n_dead_tup*100/n_live_tup p from 
@@ -811,12 +811,13 @@ VACUUM
 ```
 Выполним запрос, все "мертвые" строки удалены
 ```console
-taxi=# select relid,schemaname,relname,n_live_tup,n_dead_tup,n_dead_tup*100/n_live_tup p from pg_stat_user_tables where n_live_tup<>0 and n_dead_tup<>0;
+taxi=# select relid,schemaname,relname,n_live_tup,n_dead_tup,n_dead_tup*100/n_live_tup p from 
+  pg_stat_user_tables where n_live_tup<>0 and n_dead_tup<>0;
  relid | schemaname | relname | n_live_tup | n_dead_tup | p 
 -------+------------+---------+------------+------------+---
 (0 rows)
 ```
-Рассмотрим часто возникающую ситуацию, когда создаются индексы, а потом они либо редко используются либо никогда, но при этом занимают место и увеличивают время записи на диск
+Рассмотрим часто возникающую ситуацию, когда создаются индексы, а потом они либо редко используются либо никогда, но при этом занимают место и увеличивают время записи на диск  
 Выполним запрос, видим что некоторые индексы никогда не были использованы (idx_scan = 0)
 ```console
 taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_indexes order by idx_scan;
@@ -858,7 +859,7 @@ taxi=# select company, count(*) from taxi_trips where search_company @@ to_tsque
  Chicago Taxicab                          |  21596
 (8 rows)
 ```
-Выполним запрос, видим что этот индекс уже в условия запроса не попадает
+После выполнения запросф, видим что этот индекс уже в условие предиката не попадает
 ```console
 taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_indexes where idx_scan =0;
  relid | schemaname |  relname   |       indexrelname       | idx_scan 
@@ -868,7 +869,7 @@ taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_i
  16390 | public     | taxi_trips | idx_taxi_id_end_date     |        0
 (3 rows)
 ```
-Выполним здапрос без предиката, видим что индекс был сканирован нашим запросом один раз
+Выполним запрос без предиката, видим что индекс search_index_company был сканирован один раз
 ```console
 taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_indexes;
  relid | sche```consolemaname |  relname   |       indexrelname       | idx_scan 
@@ -883,10 +884,11 @@ taxi=# select relid,schemaname,relname,indexrelname,idx_scan from pg_stat_user_i
  16390 | public     | taxi_trips | idx_unique_key4_company  |        2
 (8 rows)
 ```
-Частой проблемой бывает зависшие сессии пользователей, либо разработчиков, которые месяцами не выходят из своих подключений к БД
-Это приводит к тому что "замораживается" горизонт данных и таблицы не очищается автовакуумом
-Такие сессии надо отслеживать и "убивать"
-Сессии можно искать подобной выборкой из таблицы pg_stat_activity просматривая поле backend_start, оценивать сколько должна существовать сессия надо по потребностям конкретной информационной системы 
+Частой проблемой бывает зависшие сессии пользователей, либо разработчиков, которые месяцами не выходят из своих подключений к БД  
+Это приводит к тому что "замораживается" горизонт данных и таблицы не очищается автовакуумом  
+Такие сессии надо отслеживать и "убивать"  
+Сессии можно искать подобной выборкой из таблицы pg_stat_activity просматривая поле backend_start.  
+Оценивать сколько должна существовать сессия надо по потребностям конкретной информационной системы 
 ```console
 taxi=# select datname,pid,usename,application_name,client_addr,backend_start from pg_stat_activity order by backend_start desc;
  datname | pid  | usename  | application_name | client_addr |         backend_start         
@@ -899,7 +901,7 @@ taxi=# select datname,pid,usename,application_name,client_addr,backend_start fro
          | 2065 |          |                  |             | 2021-12-09 11:53:31.008976+00
 (6 rows)
 ```
-Системные процессы лучше не учитывать, как правило все клиенты подключаются по сети, поэтому можно сделать запрос с предикатом client_addr is not null, тогда мы не будем учитывать локально подключенные сесиии
+Системные процессы лучше не учитывать, как правило все клиенты подключаются по сети, поэтому можно сделать запрос с предикатом client_addr is not null, тогда мы не будем учитывать локально подключенные сесиии  
 Выполним запрос, все подключения произведены используя консоль, поэтому на выходе ни одной записи
 
 taxi=# select datname,pid,usename,application_name,client_addr,backend_start from 
