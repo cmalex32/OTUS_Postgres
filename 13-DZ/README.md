@@ -92,7 +92,9 @@ demo=# \d bookings.flights;
    Filter: ((scheduled_arrival >= '2017-01-01'::date) AND (scheduled_arrival <= '2017-01-31'::date))
 (2 rows)
 
-demo=# create table bookings.flights_2017_01 (like bookings.flights including all) inherits (bookings.flights);
+create table bookings.flights2 (like bookings.flights including all);
+
+create table bookings.flights2_2017_01 (like bookings.flights2 including all) inherits (bookings.flights2);
 NOTICE:  merging column "flight_id" with inherited definition
 NOTICE:  merging column "flight_no" with inherited definition
 NOTICE:  merging column "scheduled_departure" with inherited definition
@@ -108,33 +110,33 @@ NOTICE:  merging constraint "flights_check1" with inherited definition
 NOTICE:  merging constraint "flights_status_check" with inherited definition
 CREATE TABLE
 
-create table bookings.flights_2017_02 (like bookings.flights including all) inherits (bookings.flights);
-create table bookings.flights_2017_03 (like bookings.flights including all) inherits (bookings.flights);
+create table bookings.flights2_2017_01 (like bookings.flights2 including all) inherits (bookings.flights2);
+create table bookings.flights2_2017_02 (like bookings.flights2 including all) inherits (bookings.flights2);
+create table bookings.flights2_2017_03 (like bookings.flights2 including all) inherits (bookings.flights2);
 
-alter table bookings.flights_2017_01 add check ( scheduled_arrival between date'2020-01-01' and date'2020-02-01' - 1);
-alter table bookings.flights_2017_02 add check ( scheduled_arrival between date'2020-02-01' and date'2020-03-01' - 1);
-alter table bookings.flights_2017_03 add check ( scheduled_arrival between date'2020-03-01' and date'2020-04-01' - 1);
+alter table bookings.flights2_2017_01 add check ( scheduled_arrival between date'2017-01-01' and date'2017-02-01' - 1);
+alter table bookings.flights2_2017_02 add check ( scheduled_arrival between date'2017-02-01' and date'2017-03-01' - 1);
+alter table bookings.flights2_2017_03 add check ( scheduled_arrival between date'2017-03-01' and date'2017-04-01' - 1);
 
-CREATE OR REPLACE FUNCTION bookings.flights_part()
+CREATE OR REPLACE FUNCTION bookings.flights2_part()
 RETURNS TRIGGER AS $$
 BEGIN
     if new.scheduled_arrival between date'2017-01-01' and date'2017-02-01' - 1 then
-        INSERT INTO bookings.flights_2017_01 VALUES (NEW.*);
+        INSERT INTO bookings.flights2_2017_01 VALUES (NEW.*);
     elsif new.scheduled_arrival between date'2017-02-01' and date'2017-03-01' - 1 then
-        INSERT INTO bookings.flights_02 VALUES (NEW.*);
+        INSERT INTO bookings.flights2_2017_02 VALUES (NEW.*);
     elsif new.scheduled_arrival between date'2017-03-01' and date'2017-04-01' - 1 then
-        INSERT INTO bookings.flights_04 VALUES (NEW.*);
+        INSERT INTO bookings.flights2_2017_03 VALUES (NEW.*);
     end if;
     RETURN NULL;
 END;
 $$
 LANGUAGE plpgsql;
 
-CREATE TRIGGER check_date_scheduled_arrival
-    BEFORE INSERT ON scheduled_arrival
-    FOR EACH ROW EXECUTE PROCEDURE scheduled_arrival_part();
+CREATE TRIGGER check_date_flights2
+    BEFORE INSERT ON bookings.flights2
+    FOR EACH ROW EXECUTE PROCEDURE bookings.flights2_part();
 
-
-
+insert into bookings.flights2 (select * from bookings.flights);
 
   
