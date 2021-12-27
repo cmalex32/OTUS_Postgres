@@ -95,28 +95,16 @@ demo=# \d bookings.flights;
 create table bookings.flights2 (like bookings.flights including all);
 
 create table bookings.flights2_2017_01 (like bookings.flights2 including all) inherits (bookings.flights2);
-NOTICE:  merging column "flight_id" with inherited definition
-NOTICE:  merging column "flight_no" with inherited definition
-NOTICE:  merging column "scheduled_departure" with inherited definition
-NOTICE:  merging column "scheduled_arrival" with inherited definition
-NOTICE:  merging column "departure_airport" with inherited definition
-NOTICE:  merging column "arrival_airport" with inherited definition
-NOTICE:  merging column "status" with inherited definition
-NOTICE:  merging column "aircraft_code" with inherited definition
-NOTICE:  merging column "actual_departure" with inherited definition
-NOTICE:  merging column "actual_arrival" with inherited definition
-NOTICE:  merging constraint "flights_check" with inherited definition
-NOTICE:  merging constraint "flights_check1" with inherited definition
-NOTICE:  merging constraint "flights_status_check" with inherited definition
-CREATE TABLE
-
-create table bookings.flights2_2017_01 (like bookings.flights2 including all) inherits (bookings.flights2);
 create table bookings.flights2_2017_02 (like bookings.flights2 including all) inherits (bookings.flights2);
 create table bookings.flights2_2017_03 (like bookings.flights2 including all) inherits (bookings.flights2);
+create table bookings.flights2_2017_04 (like bookings.flights2 including all) inherits (bookings.flights2);
+create table bookings.flights2_2017_05 (like bookings.flights2 including all) inherits (bookings.flights2);
 
 alter table bookings.flights2_2017_01 add check ( scheduled_arrival between date'2017-01-01' and date'2017-02-01' - 1);
 alter table bookings.flights2_2017_02 add check ( scheduled_arrival between date'2017-02-01' and date'2017-03-01' - 1);
 alter table bookings.flights2_2017_03 add check ( scheduled_arrival between date'2017-03-01' and date'2017-04-01' - 1);
+alter table bookings.flights2_2017_04 add check ( scheduled_arrival between date'2017-04-01' and date'2017-05-01' - 1);
+alter table bookings.flights2_2017_05 add check ( scheduled_arrival between date'2017-05-01' and date'2017-06-01' - 1);
 
 CREATE OR REPLACE FUNCTION bookings.flights2_part()
 RETURNS TRIGGER AS $$
@@ -127,6 +115,11 @@ BEGIN
         INSERT INTO bookings.flights2_2017_02 VALUES (NEW.*);
     elsif new.scheduled_arrival between date'2017-03-01' and date'2017-04-01' - 1 then
         INSERT INTO bookings.flights2_2017_03 VALUES (NEW.*);
+    elsif new.scheduled_arrival between date'2017-04-01' and date'2017-05-01' - 1 then
+        INSERT INTO bookings.flights2_2017_04 VALUES (NEW.*);
+    elsif new.scheduled_arrival between date'2017-05-01' and date'2017-06-01' - 1 then
+        INSERT INTO bookings.flights2_2017_05 VALUES (NEW.*);
+
     end if;
     RETURN NULL;
 END;
