@@ -155,3 +155,91 @@ CREATE TRIGGER check_date_flights2
 insert into bookings.flights2 select * from bookings.flights where scheduled_arrival between date'2017-01-01' and date'2018-01-01' - 1 ;
 
   
+  
+  
+  
+  
+  explain analyze select ac.model,ap.airport_name,count(tf.*) c from aircrafts ac, airports ap, flights fl, ticket_flights tf where ac.aircraft_code = fl.aircraft_code and 
+ap.airport_code = fl.departure_airport and tf.flight_id=fl.flight_id group by ac.model,ap.airport_name order by c desc ;
+                                                                          QUERY PLAN                                                                          
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=4722420.17..4722422.51 rows=936 width=72) (actual time=36172.950..36172.986 rows=219 loops=1)
+   Sort Key: (count(tf.*)) DESC
+   Sort Method: quicksort  Memory: 51kB
+   ->  HashAggregate  (cost=4721891.94..4722373.98 rows=936 width=72) (actual time=36172.794..36172.868 rows=219 loops=1)
+         Group Key: (ml.model ->> lang()), (ml_1.airport_name ->> lang())
+         Batches: 1  Memory Usage: 97kB
+         ->  Hash Join  (cost=8515.05..4658953.05 rows=8391852 width=120) (actual time=77.930..33433.440 rows=8391852 loops=1)
+               Hash Cond: (fl.departure_airport = ml_1.airport_code)
+               ->  Hash Join  (cost=8509.71..398136.15 rows=8391852 width=92) (actual time=77.816..9849.760 rows=8391852 loops=1)
+                     Hash Cond: (fl.aircraft_code = ml.aircraft_code)
+                     ->  Hash Join  (cost=8508.51..365733.07 rows=8391852 width=64) (actual time=77.801..7773.120 rows=8391852 loops=1)
+                           Hash Cond: (tf.flight_id = fl.flight_id)
+                           ->  Seq Scan on ticket_flights tf  (cost=0.00..153851.52 rows=8391852 width=60) (actual time=0.019..2418.891 rows=8391852 loops=1)
+                           ->  Hash  (cost=4772.67..4772.67 rows=214867 width=12) (actual time=77.652..77.653 rows=214867 loops=1)
+                                 Buckets: 131072  Batches: 4  Memory Usage: 3338kB
+                                 ->  Seq Scan on flights fl  (cost=0.00..4772.67 rows=214867 width=12) (actual time=0.005..34.402 rows=214867 loops=1)
+                     ->  Hash  (cost=1.09..1.09 rows=9 width=48) (actual time=0.006..0.007 rows=9 loops=1)
+                           Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                           ->  Seq Scan on aircrafts_data ml  (cost=0.00..1.09 rows=9 width=48) (actual time=0.003..0.005 rows=9 loops=1)
+               ->  Hash  (cost=4.04..4.04 rows=104 width=65) (actual time=0.052..0.052 rows=104 loops=1)
+                     Buckets: 1024  Batches: 1  Memory Usage: 18kB
+                     ->  Seq Scan on airports_data ml_1  (cost=0.00..4.04 rows=104 width=65) (actual time=0.011..0.028 rows=104 loops=1)
+ Planning Time: 0.501 ms
+ Execution Time: 36173.199 ms
+(24 rows)
+
+
+demo=# explain analyze select ac.model,ap.airport_name,fl.scheduled_arrival::date,count(tf.*) c from aircrafts ac, airports ap, flights fl, ticket_flights tf where ac.aircraft_code = fl.aircraft_code and ap.airport_code = fl.departure_airport and tf.flight_id=fl.flight_id group by ac.model,ap.airport_name,fl.scheduled_arrival::date order by c desc ;
+                                                                             QUERY PLAN                                                                             
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=13438915.51..13459895.14 rows=8391852 width=76) (actual time=115420.114..115431.311 rows=73560 loops=1)
+   Sort Key: (count(tf.*)) DESC
+   Sort Method: external merge  Disk: 5160kB
+   ->  GroupAggregate  (cost=7280381.56..11728063.12 rows=8391852 width=76) (actual time=110874.763..115380.428 rows=73560 loops=1)
+         Group Key: ((ml.model ->> lang())), ((ml_1.airport_name ->> lang())), ((fl.scheduled_arrival)::date)
+         ->  Sort  (cost=7280381.56..7301361.19 rows=8391852 width=124) (actual time=110874.668..113784.234 rows=8391852 loops=1)
+               Sort Key: ((ml.model ->> lang())), ((ml_1.airport_name ->> lang())), ((fl.scheduled_arrival)::date)
+               Sort Method: external merge  Disk: 952600kB
+               ->  Hash Join  (cost=8724.05..4680350.68 rows=8391852 width=124) (actual time=83.899..35180.591 rows=8391852 loops=1)
+                     Hash Cond: (fl.departure_airport = ml_1.airport_code)
+                     ->  Hash Join  (cost=8718.71..398554.15 rows=8391852 width=100) (actual time=83.781..10309.994 rows=8391852 loops=1)
+                           Hash Cond: (fl.aircraft_code = ml.aircraft_code)
+                           ->  Hash Join  (cost=8717.51..366151.07 rows=8391852 width=72) (actual time=83.761..8187.884 rows=8391852 loops=1)
+                                 Hash Cond: (tf.flight_id = fl.flight_id)
+                                 ->  Seq Scan on ticket_flights tf  (cost=0.00..153851.52 rows=8391852 width=60) (actual time=0.018..2368.398 rows=8391852 loops=1)
+                                 ->  Hash  (cost=4772.67..4772.67 rows=214867 width=20) (actual time=83.649..83.652 rows=214867 loops=1)
+                                       Buckets: 65536  Batches: 4  Memory Usage: 3244kB
+                                       ->  Seq Scan on flights fl  (cost=0.00..4772.67 rows=214867 width=20) (actual time=0.006..36.306 rows=214867 loops=1)
+                           ->  Hash  (cost=1.09..1.09 rows=9 width=48) (actual time=0.008..0.008 rows=9 loops=1)
+                                 Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                 ->  Seq Scan on aircrafts_data ml  (cost=0.00..1.09 rows=9 width=48) (actual time=0.004..0.005 rows=9 loops=1)
+                     ->  Hash  (cost=4.04..4.04 rows=104 width=65) (actual time=0.051..0.052 rows=104 loops=1)
+                           Buckets: 1024  Batches: 1  Memory Usage: 18kB
+                           ->  Seq Scan on airports_data ml_1  (cost=0.00..4.04 rows=104 width=65) (actual time=0.012..0.028 rows=104 loops=1)
+ Planning Time: 1.497 ms
+ Execution Time: 115587.999 ms
+(26 rows)
+
+
+select distinct 'create table flights1_' || EXTRACT(YEAR from fl.scheduled_arrival::date) || '_' || to_char(scheduled
+_arrival,'MM') || ' partition of table flights1 for values from (''' || to_char(scheduled_arrival,'YYYY-MM') || '-01'') to (
+''' || to_char((scheduled_arrival::date + interval '1 months')::date,'YYYY-MM') || '-01'')' from flights fl;
+                                                  ?column?                                                  
+------------------------------------------------------------------------------------------------------------
+ create table flights1_2016_10 partition of table flights1 for values from ('2016-10-01') to ('2016-11-01')
+ create table flights1_2016_08 partition of table flights1 for values from ('2016-08-01') to ('2016-09-01')
+ create table flights1_2016_09 partition of table flights1 for values from ('2016-09-01') to ('2016-10-01')
+ create table flights1_2016_11 partition of table flights1 for values from ('2016-11-01') to ('2016-12-01')
+ create table flights1_2017_02 partition of table flights1 for values from ('2017-02-01') to ('2017-03-01')
+ create table flights1_2017_09 partition of table flights1 for values from ('2017-09-01') to ('2017-10-01')
+ create table flights1_2016_12 partition of table flights1 for values from ('2016-12-01') to ('2017-01-01')
+ create table flights1_2017_03 partition of table flights1 for values from ('2017-03-01') to ('2017-04-01')
+ create table flights1_2017_08 partition of table flights1 for values from ('2017-08-01') to ('2017-09-01')
+ create table flights1_2017_01 partition of table flights1 for values from ('2017-01-01') to ('2017-02-01')
+ create table flights1_2017_04 partition of table flights1 for values from ('2017-04-01') to ('2017-05-01')
+ create table flights1_2017_06 partition of table flights1 for values from ('2017-06-01') to ('2017-07-01')
+ create table flights1_2017_05 partition of table flights1 for values from ('2017-05-01') to ('2017-06-01')
+ create table flights1_2017_07 partition of table flights1 for values from ('2017-07-01') to ('2017-08-01')
+ 
+
